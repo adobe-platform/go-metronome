@@ -97,7 +97,8 @@ func (self *Operator) UnmarshalJSON(raw []byte) error {
 }
 func (self *Operator) MarshalJSON() ([]byte, error) {
 	s := self.String()
-	return []byte(fmt.Sprintf("\"%s\"", s)), nil
+	return json.Marshal(s)
+	//return []byte(fmt.Sprintf("\"%s\"", s)), nil
 }
 
 type Constraint struct {
@@ -125,7 +126,7 @@ func (self *Constraint) Value() string {
 }
 
 type Placement struct {
-	Constraints_ []Constraint `json:"constraints,omitempty"`
+	Constraints_ []Constraint `json:"constraints"`
 }
 
 func (self *Placement) Constraints() ([]Constraint, error) {
@@ -152,7 +153,9 @@ func (self MountMode) String() string {
 }
 func (self *MountMode) MarshalJSON() ([]byte, error) {
 	//s := self.String()
-	return []byte(fmt.Sprintf("\"%s\"", mount_modes[int(*self) - 1])), nil
+	s:= self.String()
+	return json.Marshal(s)
+//	return []byte(fmt.Sprintf("\"%s\"", mount_modes[int(*self) - 1])), nil
 }
 func (self *MountMode) UnmarshalJSON(raw []byte) error {
 	var s string
@@ -169,25 +172,33 @@ func (self *MountMode) UnmarshalJSON(raw []byte) error {
 	}
 	return nil
 }
+
+func (self *ContainerPath) MarshalJSON() ([]byte, error) {
+	s := string(*self)
+	return json.Marshal(s)
+}
+
 func (self *ContainerPath) UnmarshalJSON(raw []byte) error {
 
-	if _, err := regexp.MatchString("^/[^/].*$", string(raw)); err != nil {
+	// byte must be unmarshalled as a string otherwise there are cases where the quotes will bleed
+	// through
+	var s string
+	json.Unmarshal(raw, &s)
+	if _, err := regexp.MatchString("^/[^/].*$", s); err != nil {
 		return containerPathViol
 	}
-	*self = ContainerPath(raw)
+
+	*self = ContainerPath(s)
 	return nil
 }
-func (self *ContainerPath) String() string {
-	return string(*self)
-}
 
-func NewContainerPath(path string) (self *ContainerPath, err error) {
+func NewContainerPath(path string) (self ContainerPath, err error) {
 	if _, err = regexp.MatchString("^/[^/].*$", path); err != nil {
-		return nil, err
+		return "", err
 	}
 	vg := ContainerPath(path)
 
-	return &vg, nil
+	return vg, nil
 
 }
 
@@ -216,7 +227,7 @@ func NewVolume(raw_path string, hostPath string, mode MountMode) (*Volume, error
 	if cpath, err := NewContainerPath(raw_path); err != nil {
 		return nil, err
 	} else {
-		vol.ContainerPath_ = *cpath
+		vol.ContainerPath_ = cpath
 	}
 	if vol.HostPath_ == "" {
 		return nil, required("host path")
@@ -258,13 +269,14 @@ type Run struct {
 	Placement_      *Placement        `json:"placement,omitempty"`
 	Restart_        *Restart          `json:"restart,omitempty"`
 	User_           string            `json:"user,omitempty"`
-	Volumes_        []Volume         `json:"volumes,omitempty"`
+	Volumes_        []Volume         `json:"volumes"`
 }
 
+/*
 func (self *Run) String() string {
 	rez := fmt.Sprint("cpus: %f disk: %d mem: %d\n", self.Cpus_, self.Disk_, self.Mem_)
 	return rez
-}
+}*/
 
 func (self *Run) Artifacts() []Artifact {
 	return self.Artifacts_
@@ -449,3 +461,15 @@ func (self *Job) SetLabel(label Labels) *Job {
 	self.Labels_ = &label
 	return self
 }
+type Schedule struct {
+
+	Id string  //"everyminute",
+	Cron string //"cron": "* * * * *",
+	ConcurrencyPolicy  string //  "ALLOW/DENY"
+	Enabled bool
+	StartingDeadlineSeconds  int
+	Timezone  string // "America/Chicago"
+}
+func NewScheduleFromIso8601()
+
+type Jobs []Job
