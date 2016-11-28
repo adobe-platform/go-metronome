@@ -1,12 +1,30 @@
 {
 	"comment": "",
-	"ignore": "test",
+	"ignore": "",
 	"package": [
 		{
 			"checksumSHA1": "of5xwWoxs3gKHEhGlol85SDXJi0=",
 			"path": "github.com/ChannelMeter/iso8601duration",
 			"revision": "8da3af7a2a61a4eb5ae9bddec06bf637fa9593da",
 			"revisionTime": "2015-02-04T20:18:28Z"
+		},
+		{
+			"checksumSHA1": "sVW4F/EHtGvje2b0F3GtrCHSQMg=",
+			"path": "github.com/Sirupsen/logrus",
+			"revision": "a437dfd2463eaedbec3dfe443e477d3b0a810b3f",
+			"revisionTime": "2016-11-18T19:45:39Z"
+		},
+		{
+			"checksumSHA1": "5+a04iTrvnA9u9Hng4qI9niwfQg=",
+			"path": "github.com/channelmeter/iso8601duration",
+			"revision": "8da3af7a2a61a4eb5ae9bddec06bf637fa9593da",
+			"revisionTime": "2015-02-04T20:18:28Z"
+		},
+		{
+			"checksumSHA1": "dvabztWVQX8f6oMLRyv4dLH+TGY=",
+			"path": "github.com/davecgh/go-spew/spew",
+			"revision": "346938d642f2ec3594ed81d874461961cd0faa76",
+			"revisionTime": "2016-10-29T20:57:26Z"
 		},
 		{
 			"checksumSHA1": "kBeNcaKk56FguvPSUCEaH6AxpRc=",
@@ -175,6 +193,28 @@
 			"path": "github.com/onsi/gomega/types",
 			"revision": "766f4042b942146e90594d145c5071fa92c0aa9a",
 			"revisionTime": "2015-05-19T21:08:19Z"
+		},
+		{
+			"checksumSHA1": "LuFv4/jlrmFNnDb/5SCSEPAM9vU=",
+			"path": "github.com/pmezard/go-difflib/difflib",
+			"revision": "792786c7400a136282c1664665ae0a8db921c6c2",
+			"revisionTime": "2016-01-10T10:55:54Z"
+		},
+		{
+			"checksumSHA1": "hIEmcd7hIDqO/xWSp1rJJHd0TpE=",
+			"path": "github.com/stretchr/testify/assert",
+			"revision": "18a02ba4a312f95da08ff4cfc0055750ce50ae9e",
+			"revisionTime": "2016-11-17T07:43:51Z"
+		},
+		{
+			"checksumSHA1": "yAfJ8xBj7cQuDtznpPwPt3UmJiE=",
+			"path": "golang.org/x/sys/unix",
+			"revision": "30237cf4eefd639b184d1f2cb77a581ea0be8947",
+			"revisionTime": "2016-11-19T15:29:01Z"
+		},
+		{
+			"path": "logrus",
+			"revision": ""
 		}
 	],
 	"rootPath": "github.com/adobe-platform/go-metronome"
