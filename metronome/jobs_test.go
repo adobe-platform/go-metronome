@@ -272,7 +272,7 @@ var _ = Describe("Jobs", func() {
 		BeforeEach(func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("POST", "/v1/jobs"),
+					ghttp.VerifyRequest("POST", fmt.Sprintf("/v1/jobs/%s",some_job)),
 					ghttp.VerifyJSONRepresenting(Job{}),
 					ghttp.RespondWith(http.StatusOK, nil),
 				),
@@ -280,7 +280,31 @@ var _ = Describe("Jobs", func() {
 		})
 
 		It("Makes the request", func() {
-			job := Job{}
+			job :=Job{ID_: some_job,
+				Description_: "Job with arguments",
+				Labels_: &Labels{
+					Location: "olympus",
+					Owner: "zeus",
+				},
+				Run_: &Run{
+					Artifacts_: []Artifact{
+						Artifact{Uri_: "http://foo.test.com/application.zip", Extract_: true, Executable_ :true, Cache_: false},
+					},
+					Cmd_: "nuke --dry --master local",
+					Args_:[]string{
+						"nuke",
+						"--dry",
+						"--master",
+						"local",
+					},
+					Cpus_: 1.5,
+					Mem_: 128,
+					Disk_: 32,
+					Docker_ : &Docker{
+						Image_: "foo/bla:test",
+					},
+				}}
+
 			now, _ :=ImmediateSchedule()
 			Expect(client.AddScheduledJob(&job, now)).To(Succeed())
 			Expect(server.ReceivedRequests()).To(HaveLen(2))
