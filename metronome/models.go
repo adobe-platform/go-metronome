@@ -1,6 +1,5 @@
 package metronome
 
-
 import (
 	"encoding/json"
 	"errors"
@@ -8,6 +7,8 @@ import (
 	"regexp"
 
 )
+
+var whitespaceRe = regexp.MustCompile(`\s+`)
 
 var constraintViol = errors.New("Bad constraint.  Must be EQ,LIKE,UNLIKE")
 var mountViol = errors.New("Mount point must designate RW,RO")
@@ -76,22 +77,29 @@ var constraint_operators = [...]string{
 func (self *Operator) String() string {
 	return constraint_operators[int(*self) - 1]
 }
+func decode_operator(op string) (Operator, error) {
+	switch op {
+	case "EQ":
+		return EQ, nil
+	case "LIKE":
+		return LIKE, nil
+	case "UNLIKE":
+		return UNLIKE, nil
+	default:
+		fmt.Printf("Operator.UnmarshallJSON - unknown value '%s'\n", op)
+		return -1,constraintViol
+	}
 
+}
 func (self *Operator) UnmarshalJSON(raw []byte) error {
 	var s string
 	if err := json.Unmarshal(raw, &s); err != nil {
 		return err
 	}
-	switch s {
-	case "EQ":
-		*self = EQ
-	case "LIKE":
-		*self = LIKE
-	case "UNLIKE":
-		*self = UNLIKE
-	default:
-		fmt.Printf("Operator.UnmarshallJSON - unknown value '%s'\n", s)
-		return constraintViol
+	if op, err := decode_operator(s); err != nil {
+		return err
+	} else {
+		*self = op
 	}
 	return nil
 }
@@ -106,6 +114,19 @@ type Constraint struct {
 	// operator is EQ, LIKE,UNLIKE
 	Operator_  Operator `json:"operator"`
 	Value_     string   `json:"value"`
+}
+
+func StrToConstraint(cli string) (*Constraint, error) {
+	args := whitespaceRe.Split(cli, -1)
+	if len(args) != 3 {
+		return nil, errors.New("Not enough constraint args `attribute` {EQ|LIKE} value")
+	}
+	if op, err := decode_operator(args[1]); err != nil {
+		return nil, err
+	} else {
+		return NewConstraint(args[0], op, args[2])
+	}
+
 }
 
 func NewConstraint(attribute string, op Operator, value string) (*Constraint, error) {
@@ -153,22 +174,31 @@ func (self MountMode) String() string {
 }
 func (self *MountMode) MarshalJSON() ([]byte, error) {
 	//s := self.String()
-	s:= self.String()
+	s := self.String()
 	return json.Marshal(s)
-//	return []byte(fmt.Sprintf("\"%s\"", mount_modes[int(*self) - 1])), nil
+	//	return []byte(fmt.Sprintf("\"%s\"", mount_modes[int(*self) - 1])), nil
+}
+
+func decode_mount(mode string) (MountMode, error) {
+	switch mode {
+	case "RO":
+		return RO,nil
+	case "RW":
+		return RW,nil
+	default:
+		return -1,mountViol
+	}
+
 }
 func (self *MountMode) UnmarshalJSON(raw []byte) error {
 	var s string
 	if err := json.Unmarshal(raw, &s); err != nil {
 		return err
 	}
-	switch s {
-	case "RO":
-		*self = RO
-	case "RW":
-		*self = RW
-	default:
-		return mountViol
+	if mode, err := decode_mount(s); err != nil {
+		return err
+	} else {
+		*self = mode
 	}
 	return nil
 }
@@ -220,19 +250,22 @@ func (self *Volume) Mode() (MountMode, error) {
 	return self.Mode_, nil
 }
 
-func NewVolume(raw_path string, hostPath string, mode MountMode) (*Volume, error) {
-	vol := Volume{Mode_: mode, HostPath_:hostPath}
-
-	// ensure valid path
-	if cpath, err := NewContainerPath(raw_path); err != nil {
+func NewVolume(raw_path string, hostPath string, modestr string) (*Volume, error) {
+	if mode, err := decode_mount(modestr); err != nil {
 		return nil, err
 	} else {
-		vol.ContainerPath_ = cpath
+		vol := Volume{Mode_: mode, HostPath_:hostPath}
+		// ensure valid path
+		if cpath, err := NewContainerPath(raw_path); err != nil {
+			return nil, err
+		} else {
+			vol.ContainerPath_ = cpath
+		}
+		if vol.HostPath_ == "" {
+			return nil, required("host path")
+		}
+		return &vol, nil
 	}
-	if vol.HostPath_ == "" {
-		return nil, required("host path")
-	}
-	return &vol, nil
 }
 
 type Restart struct {
@@ -411,7 +444,6 @@ func NewRun(cpus float64, mem int, disk int) (*Run, error) {
 		Restart_: nil,
 		Volumes_: make([]Volume, 0, 0),
 	}
-	vg.Args_ = append(vg.Args_, "foo")
 	return &vg, nil
 }
 
@@ -440,6 +472,15 @@ func NewJob(id string, description string, labels *Labels, run *Run) (*Job, erro
 		Run_: run,
 	}, nil
 }
+
+func (self *Job) Id() string {
+	return self.ID_
+}
+func (self *Job) SetId(id string) *Job {
+	self.ID_ = id
+	return self
+}
+
 func (self *Job) Description() string {
 	return self.Description_
 }
@@ -461,15 +502,14 @@ func (self *Job) SetLabel(label Labels) *Job {
 	self.Labels_ = &label
 	return self
 }
-type Schedule struct {
 
-	Id string  //"everyminute",
-	Cron string //"cron": "* * * * *",
-	ConcurrencyPolicy  string //  "ALLOW/DENY"
-	Enabled bool
-	StartingDeadlineSeconds  int
-	Timezone  string // "America/Chicago"
+type Schedule struct {
+	Id                      string //"everyminute",
+	Cron                    string //"cron": "* * * * *",
+	ConcurrencyPolicy       string //  "ALLOW/DENY"
+	Enabled                 bool
+	StartingDeadlineSeconds int
+	Timezone                string // "America/Chicago"
 }
-func NewScheduleFromIso8601()
 
 type Jobs []Job

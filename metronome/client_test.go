@@ -45,7 +45,7 @@ var _ = Describe("Client", func() {
 			Expect(err).To(BeNil())
 		})
 
-		It("Errors if it cannot hit chronos", func() {
+		It("Errors if it cannot hit metronome", func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("GET", "/v1/jobs"),
@@ -54,7 +54,7 @@ var _ = Describe("Client", func() {
 			)
 
 			_, err := NewClient(config_stub)
-			Expect(err).To(MatchError("Could not reach chronos cluster: 500 Internal Server Error"))
+			Expect(err).To(MatchError("Could not reach metronome cluster: 500 Internal Server Error"))
 		})
 	})
 })

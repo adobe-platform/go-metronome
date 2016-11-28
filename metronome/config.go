@@ -2,7 +2,7 @@ package metronome
 
 // A Config defines a client configuration
 type Config struct {
-	/* the url for chronos */
+	/* the url for metronome */
 	URL string
 	/* switch on debugging */
 	Debug bool

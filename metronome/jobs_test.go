@@ -2,7 +2,7 @@ package metronome_test
 
 import (
 	"net/http"
-	"time"
+	//"time"
 
 	. "github.com/adobe-platform/go-metronome/metronome"
 
@@ -10,12 +10,13 @@ import (
 	. "github.com/onsi/gomega"
 
 	ghttp "github.com/onsi/gomega/ghttp"
+	"fmt"
 )
 
 var _ = Describe("Jobs", func() {
 	var (
 		config_stub Config
-		client      Metronome
+		client Metronome
 		server      *ghttp.Server
 	)
 
@@ -48,44 +49,88 @@ var _ = Describe("Jobs", func() {
 				ghttp.CombineHandlers(
 					ghttp.VerifyRequest("GET", "/v1/jobs"),
 					ghttp.RespondWith(http.StatusOK, `[
-						{
-							"name":"dockerjob",
-							"command":"while sleep 10; do date -u +%T; done",
-							"shell":true,
-							"epsilon":"PT60S",
-							"executor":"",
-							"executorFlags":"",
-							"retries":2,
-							"owner":"",
-							"ownerName":"",
-							"description":"",
-							"async":false,
-							"successCount":190,
-							"errorCount":3,
-							"lastSuccess":"2014-03-08T16:57:17.507Z",
-							"lastError":"2014-03-01T00:10:15.957Z",
-							"cpus":0.5,
-							"disk":256.0,
-							"mem":512.0,
-							"disabled":false,
-							"softError":false,
-							"dataProcessingJobType":false,
-							"errorsSinceLastSuccess":0,
-							"uris":[],
-							"environmentVariables":[],
-							"arguments":[],
-							"highPriority":false,
-							"runAsUser":"root",
-							"container":{
-								"type":"docker",
-								"image":"libmesos/ubuntu",
-								"network":"HOST",
-								"volumes":[]
-							},
-							"schedule":"R/2015-05-21T18:14:00.000Z/PT2M",
-							"scheduleTimeZone":""
+					    {
+						"description": "Job with arguments",
+						"id": "job.with.arguments",
+						"labels": {
+						    "location": "olympus",
+						    "owner": "zeus"
+						},
+						"run": {
+						    "args": [
+							"nuke",
+							"--dry",
+							"--master",
+							"local"
+						    ],
+						    "artifacts": [
+							{
+							    "cache": false,
+							    "executable": true,
+							    "extract": true,
+							    "uri": "http://foo.test.com/application.zip"
+							}
+						    ],
+						    "cmd": "nuke --dry --master local",
+						    "cpus": 1.5,
+						    "disk": 32,
+						    "docker": {
+							"image": "foo/bla:test"
+						    },
+						    "env": {
+							"CONNECT": "direct",
+							"MON": "test"
+						    },
+						    "maxLaunchDelay": 3600,
+						    "mem": 128,
+						    "placement": {
+                        				"constraints": [
+                            					{"attribute": "rack", "operator": "EQ", "value": "rack-2"}
+                        				]
+                    				    },
+						    "restart": {
+							"activeDeadlineSeconds": 120,
+							"policy": "NEVER"
+						    },
+						    "user": "root",
+						    "volumes": [
+							{
+							    "containerPath": "/mnt/test",
+							    "hostPath": "/etc/guest",
+							    "mode": "RW"
+							}
+						    ]
 						}
-          ]`),
+					    },
+					    {
+						"description": "Job without arguments",
+						"id": "job.without.arguments",
+						"labels": {
+						    "location": "olympus",
+						    "owner": "zeus"
+						},
+						"run": {
+
+						    "cmd": "/usr/local/bin/dcos-tests --debug --term-wait 20 --http-addr :8095",
+						    "cpus": 0.5,
+						    "disk": 128,
+						    "docker": {
+							"image": "f4tq/dcos-tests:v0.31"
+						    },
+						    "env": {
+							"CONNECT": "direct",
+							"MON": "test"
+						    },
+						    "maxLaunchDelay": 3600,
+						    "mem": 32,
+						    "restart": {
+							"activeDeadlineSeconds": 120,
+							"policy": "NEVER"
+						    },
+						    "user": "root"
+						}
+					    }
+					]`),
 				),
 			)
 		})
@@ -96,39 +141,81 @@ var _ = Describe("Jobs", func() {
 		})
 
 		It("Correctly unmarshalls the response", func() {
+
 			jobs, _ := client.Jobs()
-			Expect(jobs).To(Equal(&Jobs{
-				Job{
-					Name:                 "dockerjob",
-					Command:              "while sleep 10; do date -u +%T; done",
-					Shell:                true,
-					Epsilon:              "PT60S",
-					Executor:             "",
-					ExecutorFlags:        "",
-					Retries:              2,
-					Owner:                "",
-					Async:                false,
-					SuccessCount:         190,
-					ErrorCount:           3,
-					LastSuccess:          "2014-03-08T16:57:17.507Z",
-					LastError:            "2014-03-01T00:10:15.957Z",
-					CPUs:                 0.5,
-					Disk:                 256,
-					Mem:                  512,
-					Disabled:             false,
-					URIs:                 []string{},
-					Schedule:             "R/2015-05-21T18:14:00.000Z/PT2M",
-					EnvironmentVariables: []map[string]string{},
-					Arguments:            []string{},
-					RunAsUser:            "root",
-					Container: &Container{
-						Type:    "docker",
-						Image:   "libmesos/ubuntu",
-						Network: "HOST",
-						Volumes: []map[string]string{},
+			//var jj Job = (*jobs)[0]
+			Expect((*jobs)[0]).To(Equal(Job{ID_: "job.with.arguments",
+				Description_: "Job with arguments",
+				Labels_: &Labels{
+					Location: "olympus",
+					Owner: "zeus",
+				},
+				Run_: &Run{
+					Artifacts_: []Artifact{
+						Artifact{Uri_: "http://foo.test.com/application.zip", Extract_: true, Executable_ :true, Cache_: false},
+					},
+					Cmd_: "nuke --dry --master local",
+					Args_:[]string{
+						"nuke",
+						"--dry",
+						"--master",
+						"local",
+					},
+					Cpus_: 1.5,
+					Mem_: 128,
+					Disk_: 32,
+					Docker_ : &Docker{
+						Image_: "foo/bla:test",
+					},
+					Env_:  map[string]string{
+						"MON": "test",
+						"CONNECT": "direct",
+					},
+					MaxLaunchDelay_: 3600,
+					Placement_: &Placement{
+						Constraints_: []Constraint{
+							Constraint{Attribute_: "rack", Operator_: EQ, Value_: "rack-2"} },
+
+					},
+					Restart_: &Restart{
+						ActiveDeadlineSeconds_: 120, Policy_: "NEVER",
+
+					},
+					User_: "root",
+					Volumes_: []Volume{
+						Volume{Mode_:RW, HostPath_:"/etc/guest", ContainerPath_: "/mnt/test" },
 					},
 				},
 			}))
+
+			Expect((*jobs)[1]).To(Equal(
+				Job{Description_: "Job without arguments",
+					ID_: "job.without.arguments",
+					Labels_: &Labels{
+						Location: "olympus",
+						Owner: "zeus",
+					},
+					Run_: &Run{Cmd_: "/usr/local/bin/dcos-tests --debug --term-wait 20 --http-addr :8095",
+						Cpus_: 0.5,
+						Disk_: 128,
+						Docker_: &Docker{
+							Image_: "f4tq/dcos-tests:v0.31",
+						},
+						Env_:   map[string]string{
+							"MON": "test",
+							"CONNECT": "direct",
+						},
+						MaxLaunchDelay_: 3600,
+						Mem_: 32,
+						Restart_: &Restart{
+							ActiveDeadlineSeconds_: 120,
+							Policy_: "NEVER",
+						},
+						User_: "root",
+					},
+
+				}))
+
 		})
 	})
 
@@ -140,7 +227,7 @@ var _ = Describe("Jobs", func() {
 		BeforeEach(func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("DELETE", "/scheduler/job/"+jobName),
+					ghttp.VerifyRequest("DELETE", "/v1/jobs/" + jobName),
 					ghttp.RespondWith(http.StatusOK, nil),
 				),
 			)
@@ -152,74 +239,40 @@ var _ = Describe("Jobs", func() {
 		})
 	})
 
-	Describe("DeleteJobTasks", func() {
-		var (
-			jobName = "fake_job"
-		)
-
-		BeforeEach(func() {
-			server.AppendHandlers(
-				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("DELETE", "/scheduler/task/kill/"+jobName),
-					ghttp.RespondWith(http.StatusOK, nil),
-				),
-			)
-		})
-
-		It("Makes the delete request", func() {
-			Expect(client.DeleteJobTasks(jobName)).To(Succeed())
-			Expect(server.ReceivedRequests()).To(HaveLen(2))
-		})
-	})
-
 	Describe("StartJob", func() {
 		var (
-			jobName = "fake_job"
+
+			job_without_arguments = "job.without.arguments"
 		)
 
-		Context("Starting a job with no arguments", func() {
+		Context("Starting a job", func() {
 			BeforeEach(func() {
 				server.AppendHandlers(
 					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("PUT", "/scheduler/job/"+jobName, ""),
+						ghttp.VerifyRequest("POST", fmt.Sprintf("/v1/jobs/%s/runs", job_without_arguments), ""),
 						ghttp.RespondWith(http.StatusOK, nil),
 					),
 				)
 			})
 
 			It("Makes the start request", func() {
-				Expect(client.StartJob(jobName, nil)).To(Succeed())
+				Expect(client.StartJob(job_without_arguments)).To(Succeed())
 				Expect(server.ReceivedRequests()).To(HaveLen(2))
 			})
 		})
 
-		Context("Starting a job with arguments", func() {
-			BeforeEach(func() {
-				server.AppendHandlers(
-					ghttp.CombineHandlers(
-						ghttp.VerifyRequest("PUT", "/scheduler/job/"+jobName, "arg1=value1&arg2=value2"),
-						ghttp.RespondWith(http.StatusOK, nil),
-					),
-				)
-			})
-
-			It("Can pass arguments to the start job request", func() {
-				args := map[string]string{
-					"arg1": "value1",
-					"arg2": "value2",
-				}
-
-				Expect(client.StartJob(jobName, args)).To(Succeed())
-				Expect(server.ReceivedRequests()).To(HaveLen(2))
-			})
-		})
 	})
 
 	Describe("AddScheduledJob", func() {
+		var (
+
+			some_job = "some_job"
+		)
+
 		BeforeEach(func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("POST", "/scheduler/iso8601"),
+					ghttp.VerifyRequest("POST", "/v1/jobs"),
 					ghttp.VerifyJSONRepresenting(Job{}),
 					ghttp.RespondWith(http.StatusOK, nil),
 				),
@@ -228,29 +281,12 @@ var _ = Describe("Jobs", func() {
 
 		It("Makes the request", func() {
 			job := Job{}
-			Expect(client.AddScheduledJob(&job)).To(Succeed())
+			now, _ :=ImmediateSchedule()
+			Expect(client.AddScheduledJob(&job, now)).To(Succeed())
 			Expect(server.ReceivedRequests()).To(HaveLen(2))
 		})
 	})
-
-	Describe("AddDependentJob", func() {
-		BeforeEach(func() {
-			server.AppendHandlers(
-				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("POST", "/scheduler/dependency"),
-					ghttp.VerifyJSONRepresenting(Job{}),
-					ghttp.RespondWith(http.StatusOK, nil),
-				),
-			)
-		})
-
-		It("Makes the request", func() {
-			job := Job{}
-			Expect(client.AddDependentJob(&job)).To(Succeed())
-			Expect(server.ReceivedRequests()).To(HaveLen(2))
-		})
-	})
-
+/*
 	Describe("RunOnceNowJob", func() {
 		BeforeEach(func() {
 			server.AppendHandlers(
@@ -308,4 +344,5 @@ var _ = Describe("Jobs", func() {
 			Expect(err).To(MatchError("Repetitions string not formatted correctly"))
 		})
 	})
+	*/
 })

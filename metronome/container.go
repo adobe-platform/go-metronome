@@ -1,6 +1,6 @@
 package metronome
 
-// A Container defines a chronos container
+// A Container defines a metronome container
 type Container struct {
 	Type    string              `json:"type,omitempty"`
 	Image   string              `json:"image,omitempty"`

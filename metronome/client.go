@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	//"log"
 )
 
 // Constants to represent HTTP verbs
@@ -18,14 +19,12 @@ const (
 	HTTPPost   = "POST"
 )
 
-// Chronos is a client that can interact with the chronos API
+// Metronome is a client that can interact with the metronome API
 type Metronome interface {
-	Jobs() (*Jobs, error)
+	Jobs() (*[]Job, error)
 	DeleteJob(job_id string) error
-	DeleteJobTasks(job_id string) error
-	StartJob(name string, args map[string]string) error
-	AddScheduledJob(job *Job) error
-	AddDependentJob(job *Job) error
+	StartJob(name string) error
+	AddScheduledJob(job *Job , sched *Schedule) error
 	RunOnceNowJob(job *Job) error
 }
 
@@ -37,25 +36,22 @@ type Client struct {
 }
 
 // NewClient returns a new  client, initialzed with the provided config
-func NewClient(config Config) (*Metronome, error) {
+func NewClient(config Config) (Metronome, error) {
 	client := new(Client)
-
+	fmt.Printf("NewClient started\n")
 	var err error
 	client.url, err = url.Parse(config.URL)
 	if err != nil {
 		return nil, err
 	}
-
 	client.config = config
-
 	client.http = &http.Client{
 		Timeout: (time.Duration(config.RequestTimeout) * time.Second),
 	}
-
 	// Verify you can reach metronome
 	_, err = client.Jobs()
 	if err != nil {
-		return nil, errors.New("Could not reach chronos cluster: " + err.Error())
+		return nil, errors.New("Could not reach metronome cluster: " + err.Error())
 	}
 
 	return client, nil
@@ -109,7 +105,6 @@ func (client *Client) apiCall(method string, uri string, queryParams map[string]
 	}
 	return status, nil
 }
-
 func (client *Client) buildURL(path string, queryParams map[string]string) {
 	query := client.url.Query()
 	for k, v := range queryParams {
