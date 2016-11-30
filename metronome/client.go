@@ -13,20 +13,64 @@ import (
 
 // Constants to represent HTTP verbs
 const (
-	HTTPGet    = "GET"
-	HTTPPut    = "PUT"
+	HTTPGet = "GET"
+	HTTPPut = "PUT"
 	HTTPDelete = "DELETE"
-	HTTPPost   = "POST"
+	HTTPPost = "POST"
 )
 
 // Metronome is a client that can interact with the metronome API
-type Metronome interface {
+type MetronomeChronos interface {
 	Jobs() (*[]Job, error)
 	DeleteJob(job_id string) error
 	StartJob(name string) error
-	AddScheduledJob(job *Job , sched *Schedule) error
+	AddScheduledJob(job *Job, sched *Schedule) error
 	RunOnceNowJob(job *Job) error
 }
+
+type Metronome interface {
+	// POST /v1/jobs
+	CreateJob(*Job) (interface{}, error)
+	// DELETE /v1/jobs/$jobId
+	DeleteJob(jobId string) (interface{}, error)
+	// GET /v1/jobs/$jobId
+	GetJob(jobId string) (*Job, error)
+	// GET /v1/jobs
+	Jobs() ([]Job, error)
+	// PUT /v1/jobs/$jobId
+	JobUpdate(jobId string) (interface{}, error)
+	//
+	// schedules
+	// GET /v1/jobs/$jobId/runs
+	RunLs(jobId string) (interface{}, error)
+	// POST /v1/jobs/$jobId/runs
+	RunStartJob(jobId string) (interface{}, error)
+	// GET /v1/jobs/$jobId/runs/$runId
+	RunStatusJob(jobId string, runId string) (interface{}, error)
+	// POST /v1/jobs/$jobId/runs/$runId/action/stop
+	RunStopJob(jobId string, runId string) (interface{}, error)
+
+	//
+	// Schedules
+	//
+	// POST /v1/jobs/$jobId/schedules
+	JobScheduleCreate(jobId string, new *Schedule) (interface{}, error)
+	// GET /v1/jobs/$jobId/schedules/$scheduleId
+	JobsScheduleGet(jobId string, schedId string) (*[]Schedule, error)
+	// GET /v1/jobs/$jobId/schedules
+	JobScheduleList(jobId string) (interface{}, error)
+	// DELETE /v1/jobs/$jobId/schedules/$scheduleId
+	JobsScheduleDelete(jobId string , schedId string )// GET /v1/jobs/$jobId/schedules/$scheduleId
+	// PUT /v1/jobs/$jobId/schedules/$scheduleId
+
+
+	//  GET  /v1/metrics
+	Metrics() (interface{}, error)
+	//  GET /v1/ping
+	Ping() (interface{}, error)
+}
+
+
 
 // A Client can make http requests
 type Client struct {
@@ -150,5 +194,5 @@ func (client *Client) httpCall(method string, body string) (int, *http.Response,
 
 // TODO: this better
 func (client *Client) log(message string, args ...interface{}) {
-	fmt.Printf(message+"\n", args...)
+	fmt.Printf(message + "\n", args...)
 }
