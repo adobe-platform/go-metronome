@@ -12,16 +12,22 @@ import (
 	"strconv"
 )
 
+func (client *Client) CreateJob(*Job) (interface{}, error)
+{
 
-// RunOnceNowSchedule will return a schedule that starts immediately, runs once,
-// and runs every 2 minutes until successful
-func RunOnceNowSchedule() string {
-	return ImmediateCrontab()
 }
+// DELETE /v1/jobs/$jobId
+func (client *Client)  DeleteJob(jobId string) (interface{}, error){
+	json.
+	client.apiDelete(fmt.Sprintf(MetronomeAPIDeleteJob, jobId), nil, nil)
+}
+// GET /v1/jobs/$jobId
+func (client *Client) GetJob(jobId string) (*Job, error){
 
-// Jobs gets all jobs that metronome knows about
-func (client *Client) Jobs() (*[]Job, error) {
-//	jobs := new(Jobs)
+}
+// GET /v1/jobs
+func (client *Client)  Jobs() ([]Job, error){
+	//	jobs := new(Jobs)
 	jobs := make([]Job,0,0)
 
 	err := client.apiGet(MetronomeAPIJobs, nil, &jobs)
@@ -29,9 +35,69 @@ func (client *Client) Jobs() (*[]Job, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	return &jobs, nil
+	return jobs,nil
 }
+
+
+// PUT /v1/jobs/$jobId
+func (client *Client) JobUpdate(jobId string) (interface{}, error){
+
+}
+//
+// schedules
+// GET /v1/jobs/$jobId/runs
+func (client *Client) RunLs(jobId string) (interface{}, error){
+
+}
+// POST /v1/jobs/$jobId/runs
+func (client *Client) RunStartJob(jobId string) (interface{}, error){
+
+}
+// GET /v1/jobs/$jobId/runs/$runId
+func (client *Client)  RunStatusJob(jobId string, runId string) (interface{}, error){
+
+}
+// POST /v1/jobs/$jobId/runs/$runId/action/stop
+func (client *Client) RunStopJob(jobId string, runId string) (interface{}, error){
+
+}
+
+//
+// Schedules
+//
+// POST /v1/jobs/$jobId/schedules
+func (client *Client) JobScheduleCreate(jobId string, new *Schedule) (interface{}, error){
+
+}
+// GET /v1/jobs/$jobId/schedules/$scheduleId
+func (client *Client) JobsScheduleGet(jobId string, schedId string) (*[]Schedule, error){
+
+}
+// GET /v1/jobs/$jobId/schedules
+func (client *Client) JobScheduleList(jobId string) (interface{}, error){
+
+}
+// DELETE /v1/jobs/$jobId/schedules/$scheduleId
+func (client *Client) JobsScheduleDelete(jobId string , schedId string ){
+
+}
+
+
+//  GET  /v1/metrics
+func (client *Client) Metrics() (interface{}, error){
+
+}
+//  GET /v1/ping
+func (client *Client) Ping() (interface{}, error){
+
+}
+
+// RunOnceNowSchedule will return a schedule that starts immediately, runs once,
+// and runs every 2 minutes until successful
+func RunOnceNowSchedule() string {
+	return ImmediateCrontab()
+}
+
 
 // DeleteJob will delete a metronome job
 // name: The name of job you wish to delete
@@ -164,7 +230,7 @@ func ImmediateSchedule() (*Schedule,error) {
 	}
 
 	sched := &Schedule{
-		Id:  fmt.Sprintf("%s-%d%d%d%d%d%d", y, M, d, h, m, s), //"everyminute",
+		ID:  fmt.Sprintf("%s-%d%d%d%d%d%d", y, M, d, h, m, s), //"everyminute",
 		Cron: cronstr, //"cron": "* * * * *",
 		ConcurrencyPolicy: "ALLOW",
 		Enabled: true,
