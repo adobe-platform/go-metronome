@@ -504,12 +504,12 @@ func (self *Job) SetLabel(label Labels) *Job {
 }
 
 type Schedule struct {
-	Id                      string //"everyminute",
-	Cron                    string //"cron": "* * * * *",
-	ConcurrencyPolicy       string //  "ALLOW/DENY"
-	Enabled                 bool
-	StartingDeadlineSeconds int
-	Timezone                string // "America/Chicago"
+	ID string `json:"id"`
+	Cron string `json:"cron"`
+	ConcurrencyPolicy string `json:"concurrencyPolicy"`
+	Enabled bool `json:"enabled"`
+	StartingDeadlineSeconds int `json:"startingDeadlineSeconds"`
+	Timezone string `json:"timezone"`
 }
 
 type Jobs []Job
