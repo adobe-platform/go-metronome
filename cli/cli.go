@@ -482,13 +482,14 @@ func (self *Metrics) Execute(runtime *Runtime) (interface{}, error) {
 type Ping int
 
 func (self *Ping) Parse(args []string) (CommandExec,error) {
+	logrus.Debugf("Ping.Parse: %+v\n", args)
 	return self,nil
 }
 func (self *Ping) Execute(runtime *Runtime) (interface{}, error) {
+	logrus.Debugf("Ping.execute\n")
 	if msg, err := runtime.client.Ping(); err != nil {
 		return nil, err
 	} else {
-//		result := json.RawMessage(msg)
 		return msg,nil
 	}
 }
@@ -740,7 +741,7 @@ func Usage(msg string) {
 	if msg != "" {
 		logrus.Errorf(" %s ", msg)
 	}
-	logrus.Errorf("usage: %s <global-options>%s [<args>]", os.Args[0], strings.Join([]string {
+	logrus.Errorf("usage: %s <global-options> {%s} [<args>]", os.Args[0], strings.Join([]string {
 		"job",
 		"runs",
 		"schedule",

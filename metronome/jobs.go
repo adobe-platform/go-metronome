@@ -10,6 +10,9 @@ import (
 	"encoding/json"
 	"regexp"
 	"strconv"
+	//"log"
+	"github.com/Sirupsen/logrus"
+	"reflect"
 )
 
 func (client *Client) CreateJob(job *Job) (interface{}, error) {
@@ -162,11 +165,13 @@ func (client *Client) Metrics() (interface{}, error) {
 }
 //  GET /v1/ping
 func (client *Client) Ping() (interface{}, error) {
-	msg := json.RawMessage{}
+	var msg string= "foo"
 	if err := client.apiGet(MetronomeAPIPing, nil, &msg); err != nil {
+
 		return nil, err
 	} else {
-		return &msg, err
+		logrus.Debugf("ping result: '%s' %+v\n", reflect.TypeOf(msg), msg)
+		return msg, err
 	}
 }
 

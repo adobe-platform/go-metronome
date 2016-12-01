@@ -41,6 +41,6 @@ const (
 	//  GET  /v1/metrics
 	MetronomeAPIMetrics = "/v1/metrics"
 	//  GET /v1/ping
-	MetronomeAPIPing = "/v1/metrics"
+	MetronomeAPIPing = "/ping"
 
 )

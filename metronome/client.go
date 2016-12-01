@@ -8,7 +8,9 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	"io/ioutil"
 	//"log"
+	"github.com/Sirupsen/logrus"
 )
 
 // Constants to represent HTTP verbs
@@ -42,7 +44,7 @@ type Metronome interface {
 	//
 	// schedules
 	// GET /v1/jobs/$jobId/runs
-	RunLs(jobId string) (*[]JobStatus , error)
+	RunLs(jobId string) (*[]JobStatus, error)
 	// POST /v1/jobs/$jobId/runs
 	RunStartJob(jobId string) (interface{}, error)
 	// GET /v1/jobs/$jobId/runs/$runId
@@ -58,9 +60,9 @@ type Metronome interface {
 	// GET /v1/jobs/$jobId/schedules/$scheduleId
 	JobScheduleGet(jobId string, schedId string) (*Schedule, error)
 	// GET /v1/jobs/$jobId/schedules
-	JobScheduleList(jobId string) ( *[]Schedule, error)
+	JobScheduleList(jobId string) (*[]Schedule, error)
 	// DELETE /v1/jobs/$jobId/schedules/$scheduleId
-	JobScheduleDelete(jobId string , schedId string ) (interface{}, error)
+	JobScheduleDelete(jobId string, schedId string) (interface{}, error)
 	// PUT /v1/jobs/$jobId/schedules/$scheduleId
 	JobScheduleUpdate(jobId string, schedId string, sched *Schedule) (interface{}, error)
 
@@ -82,7 +84,7 @@ type Client struct {
 // NewClient returns a new  client, initialzed with the provided config
 func NewClient(config Config) (Metronome, error) {
 	client := new(Client)
-	fmt.Printf("NewClient started\n")
+	logrus.Debugf("NewClient started\n")
 	var err error
 	client.url, err = url.Parse(config.URL)
 	if err != nil {
@@ -134,13 +136,32 @@ func (client *Client) apiCall(method string, uri string, queryParams map[string]
 	if err != nil {
 		return 0, err
 	}
-
+	logrus.Debugf("%s result status: %d\n", uri, response.Status)
+	logrus.Debugf("Headers: %+v\n\n", response.Header)
 	if response.ContentLength > 0 {
-		err = json.NewDecoder(response.Body).Decode(result)
-
-		if err != nil {
-			return status, err
+		ct := response.Header["Content-Type"]
+		logrus.Debugf("content-type: %s\n",ct)
+		switch ct[0] {
+		case "application/json":
+			err = json.NewDecoder(response.Body).Decode(result)
+			if err != nil {
+				return status, err
+			}
+		case "text/plain; charset=utf-8":
+			if htmlData, err := ioutil.ReadAll(response.Body); err != nil {
+				return status, err
+			} else {
+				v := result.(*string)
+				v2 := string(htmlData)
+				v = &v2
+				// compiler see v as unused
+				if v != nil{}
+				logrus.Debugf("text bytes: %d result: %+v %+v\n",len(htmlData),htmlData,v)
+			}
+		default:
+			return status,errors.New(fmt.Sprintf("Unknown content-type %s",ct[0]))
 		}
+
 	}
 
 	// TODO: Handle error status codes

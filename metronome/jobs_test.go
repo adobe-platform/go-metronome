@@ -109,7 +109,8 @@ var _ = Describe("Jobs", func() {
 						    "location": "olympus",
 						    "owner": "zeus"
 						},
-						"run": {
+						"ru//		result := json.RawMessage(msg)
+n": {
 
 						    "cmd": "/usr/local/bin/dcos-tests --debug --term-wait 20 --http-addr :8095",
 						    "cpus": 0.5,
