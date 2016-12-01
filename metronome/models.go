@@ -511,5 +511,12 @@ type Schedule struct {
 	StartingDeadlineSeconds int `json:"startingDeadlineSeconds"`
 	Timezone string `json:"timezone"`
 }
-
+type JobStatus struct {
+	CompletedAt interface{} `json:"completedAt"`
+	CreatedAt string `json:"createdAt"`
+	ID string `json:"id"`
+	JobID string `json:"jobId"`
+	Status string `json:"status"`
+	Tasks []interface{} `json:"tasks"`
+}
 type Jobs []Job

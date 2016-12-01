@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	ghttp "github.com/onsi/gomega/ghttp"
+	"github.com/onsi/gomega/ghttp"
 	"fmt"
 )
 
@@ -256,7 +256,7 @@ var _ = Describe("Jobs", func() {
 			})
 
 			It("Makes the start request", func() {
-				Expect(client.StartJob(job_without_arguments)).To(Succeed())
+				Expect(client.RunStartJob(job_without_arguments)).To(Succeed())
 				Expect(server.ReceivedRequests()).To(HaveLen(2))
 			})
 		})
@@ -275,6 +275,10 @@ var _ = Describe("Jobs", func() {
 					ghttp.VerifyRequest("POST", fmt.Sprintf("/v1/jobs/%s",some_job)),
 					ghttp.VerifyJSONRepresenting(Job{}),
 					ghttp.RespondWith(http.StatusOK, nil),
+				),
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("POST", fmt.Sprintf("/v1/jobs/%s/runs",some_job)),
+					ghttp.RespondWith(http.StatusCreated, nil),
 				),
 			)
 		})
@@ -306,7 +310,9 @@ var _ = Describe("Jobs", func() {
 				}}
 
 			now, _ :=ImmediateSchedule()
-			Expect(client.AddScheduledJob(&job, now)).To(Succeed())
+			fmt.Printf("Now : %+v\n",now)
+			Expect(client.CreateJob(&job)).To(Succeed())
+			Expect(client.RunStartJob(some_job)).To(Succeed())
 			Expect(server.ReceivedRequests()).To(HaveLen(2))
 		})
 	})

@@ -10,7 +10,6 @@ import (
 	//	"strconv"
 	"strings"
 	"errors"
-	"reflect"
 	"encoding/json"
 )
 
@@ -27,7 +26,7 @@ type Runtime struct {
 	httpAddr string
 	flags    *flag.FlagSet
 	debug    bool
-	client   met.Client
+	client   met.Metronome
 }
 type CommandExec interface {
 	Execute(*Runtime) (interface{}, error)
@@ -137,7 +136,7 @@ func (self *Runtime) Parse(args []string) (CommandExec, error) {
 	self.flags.BoolVar(&self.debug, "debug", false, "Turn on debug")
 
 	if err := self.flags.Parse(args); err != nil {
-		return err
+		return nil,err
 	}
 	config := met.NewDefaultConfig()
 	config.URL = self.httpAddr
@@ -155,11 +154,11 @@ type JobId string
 
 func (self *JobId) FlagSet(name string) *flag.FlagSet {
 	flags := flag.NewFlagSet(name, flag.ExitOnError)
-	flags.StringVar(&self, "job-id", "", "Job Id")
+	flags.StringVar((*string)(self), "job-id", "", "Job Id")
 	return flags
 }
 func (self *JobId) Validate() error {
-	if self == "" {
+	if string(*self) == "" {
 		return errors.New("job-id required")
 	}
 	return nil
@@ -170,7 +169,7 @@ func (self *JobId) Parse(args []string) (CommandExec, error) {
 	if err := flags.Parse(args); err != nil {
 		return nil, err
 	} else if err := self.Validate(); err != nil {
-		return err
+		return nil,err
 	}
 	return nil, nil
 }
@@ -179,14 +178,14 @@ type SchedId string
 
 func (self *SchedId) FlagSet(name string) *flag.FlagSet {
 	flags := flag.NewFlagSet(name, flag.ExitOnError)
-	flags.StringVar(&self, "sched-id", "", "Schedule Id")
+	flags.StringVar((*string)(self), "sched-id", "", "Schedule Id")
 	return flags
 }
 func (self *SchedId) Parse(args []string) (CommandExec, error) {
 	flags := self.FlagSet("sched_id")
 	if err := flags.Parse(args); err != nil {
 		return nil, err
-	} else if self == "" {
+	} else if string(*self) == "" {
 		return nil, errors.New("SchedId sched-id required")
 	}
 	return nil, nil
@@ -196,11 +195,11 @@ type RunId string
 
 func (self *RunId) FlagSet(name string) *flag.FlagSet {
 	flags := flag.NewFlagSet(name, flag.ExitOnError)
-	flags.StringVar(&self, "run-id", "", "Run Id")
+	flags.StringVar((*string)(self), "run-id", "", "Run Id")
 	return flags
 }
 func (self *RunId) Validate() error {
-	if self == "" {
+	if string(*self) == "" {
 		return errors.New("run-id required")
 	}
 	return nil
@@ -224,21 +223,22 @@ type JobSchedRun struct {
 	*JobSched
 }
 
-func in(list []string, val string) bool {
-	for _, slot := range list {
-		if slot == val {
+func in(val string, targ []string) bool {
+	for _, cur := range targ {
+		if cur == val {
 			return true
 		}
 	}
-	return true
+	return false
 }
+
 func (self *JobSched) FlagSet(name string) *flag.FlagSet {
 	flags := self.JobId.FlagSet(name)
 
 	flags.StringVar(&self.Schedule.ID, "sched-id", "", "Schedule Id")
 	flags.StringVar(&self.Schedule.Cron, "cron", "", "Schedule Cron")
 	flags.StringVar(&self.Schedule.Timezone, "tz", "GMT", "Schedule time zone")
-	flags.Int64Var(&self.Schedule.StartingDeadlineSeconds, "start-deadline", 0, "Schedule deadline")
+	flags.IntVar(&self.Schedule.StartingDeadlineSeconds, "start-deadline", 0, "Schedule deadline")
 	flags.StringVar(&self.Schedule.ConcurrencyPolicy, "concurrency-policy", "ALLOW", "Schedule concurrency.  One of ALLOW,FORBID,REPLACE")
 	return flags
 }
@@ -250,7 +250,7 @@ func (self *JobSched) Validate() error {
 	} else if self.Schedule.Cron == "" {
 		return errors.New("Missing Cron in JobScheduleCreate")
 	} else if !in(self.Schedule.ConcurrencyPolicy, []string{"ALLOW", "FORBID", "REPLACE"}) {
-		return nil, errors.New("Missing concurrency policy")
+		return errors.New("Missing concurrency policy")
 	}
 	return nil
 }
@@ -272,33 +272,34 @@ type JobTopLevel struct {
 
 func (self *JobTopLevel) Parse(args [] string) (CommandExec, error) {
 	if len(args) == 0 {
-		return errors.New("Don't understand")
+		return nil,errors.New("Don't understand")
 	}
 	switch args[1] {
 
 	case "create":
 		// POST /v1/jobs
-		self.task = &JobCreateRuntime{}
+		 x:=CommandParse(&JobCreateRuntime{})
+		self.task = x
 
 	case "delete":
 		// DELETE /v1/jobs/$jobid
-		self.task = &JobDelete{}
+		self.task = CommandParse(new(JobDelete))
 	case "ls":
 		// GET /v1/jobs
-		self.task = &JobList{}
+		self.task = CommandParse(new(JobList))
 	case "get":
 		// GET /v1/jobs/$jobId
-		self.task = &JobGet{}
+		self.task = CommandParse(new(JobGet))
 	case "update":
 		// PUT /v1/jobs/$jobId
-		self.task = &JobUpdate{}
+		self.task = CommandParse(new(JobUpdate))
 	case "schedules":
 		// GET /v1/jobs/$jobId/schedules  []Schedule
-		self.task = &JobScheduleList{}
+		self.task = CommandParse(new(JobScheduleList))
 	case "schedule":
-		self.task = &JobScheduleCreate{}
+		self.task = CommandParse(new(JobScheduleCreate))
 	default:
-		return errors.New("Missing job")
+		return nil, errors.New("Missing job")
 	}
 	return self.task.Parse(args[1:])
 }
@@ -307,7 +308,7 @@ func (self *JobTopLevel) Parse(args [] string) (CommandExec, error) {
 // POST /v1/jobs
 type JobCreateConfig struct {
 	JobId
-	flags          *flag.FlagSet
+
 	cpus           float64
 	disk           int
 	mem            int
@@ -324,70 +325,81 @@ type JobCreateConfig struct {
 	runNow         bool
 }
 type JobCreateRuntime struct {
-	*JobCreateConfig
+	JobCreateConfig
 	job *met.Job
 }
 
+func (self *JobCreateRuntime) FlagSet(name string) *flag.FlagSet {
+	flags := flag.NewFlagSet(name, flag.ExitOnError)
+
+	flags.StringVar((*string)(&self.JobId), "job-id", "", "Job Id")
+	flags.StringVar(&self.description, "description", "", "Job Description - optional")
+	flags.StringVar((*string)(&self.docker_image), "docker-image", DefaultImage, "Docker Image")
+	flags.Float64Var(&self.cpus, "cpus", DefaultCPUs, "cpus")
+	flags.IntVar(&self.mem, "memory", DefaultMemory, "memory")
+	flags.IntVar(&self.disk, "disk", DefaultDisk, "disk")
+	flags.StringVar(&self.restart_policy, "restart-policy", "", "Restart policy on failure: NEVER or ALWAYS")
+	flags.Var(&self.constraints, "constraint", "Add Constraint used to construct Job->Run->[]Constraint")
+	flags.Var(&self.volumes, "volume", "/host:/container:{RO|RW} . Adds Volume passed to metrononome->Job->Run->Volumes. You can call more than once")
+	flags.Var(&self.args, "arg", "Adds Arg metrononome->Job->Run->Args. You can call more than once")
+	flags.Var(&self.env, "env", "VAR=VAL . Adds Volume passed to metrononome->Job->Run->Volumes.  You can call more than once")
+	flags.Var(&self.labels, "label", "Location=xxx; Owner=yyy")
+	flags.StringVar(&self.user, "user", "root", "user to run as")
+	flags.StringVar(&self.cmd, "cmd", "", "Command to run")
+	flags.BoolVar(&self.runNow, "run-now", false, "Run this job now, otherwise it is created as unscheduled")
+	return flags
+}
+
+func (self *JobCreateRuntime) Validate() error{
+	if self.JobId == "" {
+		return errors.New("Missing JobId")
+	}
+	return nil
+}
+
 func (self *JobCreateRuntime) Parse(args []string) (CommandExec, error) {
-	cfg := JobCreateConfig{}
 
-	cfg.flags = flag.NewFlagSet("job_create", flag.ExitOnError)
-	cfg.flags.StringVar(&cfg.JobId, "job-id", "", "Job Id")
-	cfg.flags.StringVar(&cfg.description, "description", "", "Job Description - optional")
-	cfg.flags.StringVar(&cfg.docker_image, "docker-image", DefaultImage, "Docker Image")
-	cfg.flags.Float64Var(&cfg.cpus, "cpus", DefaultCPUs, "cpus")
-	cfg.flags.IntVar(&cfg.mem, "memory", DefaultMemory, "memory")
-	cfg.flags.IntVar(&cfg.disk, "disk", DefaultDisk, "disk")
-	cfg.flags.StringVar(&cfg.restart_policy, "restart-policy", "", "Restart policy on failure: NEVER or ALWAYS")
-	cfg.flags.Var(&cfg.constraints, "constraint", "Add Constraint used to construct Job->Run->[]Constraint")
-	cfg.flags.Var(&cfg.volumes, "volume", "/host:/container:{RO|RW} . Adds Volume passed to metrononome->Job->Run->Volumes. You can call more than once")
-	cfg.flags.Var(&cfg.args, "arg", "Adds Arg metrononome->Job->Run->Args. You can call more than once")
-	cfg.flags.Var(&cfg.env, "env", "VAR=VAL . Adds Volume passed to metrononome->Job->Run->Volumes.  You can call more than once")
-	cfg.flags.Var(&cfg.labels, "label", "Location=xxx; Owner=yyy")
-	cfg.flags.StringVar(&cfg.user, "user", "root", "user to run as")
-	cfg.flags.StringVar(&cfg.cmd, "cmd", "", "Command to run")
-	cfg.flags.BoolVar(&cfg.runNow, "run-now", false, "Run this job now, otherwise it is created as unscheduled")
+	flags := self.FlagSet("job_create")
 
-	if err := cfg.flags.Parse(args); err != nil {
+	if err := flags.Parse(args); err != nil {
 		return nil, err
-	} else if cfg.JobId == "" {
-		return nil, errors.New("Missing JobId")
+	} else if err2:= self.Validate(); err2 != nil {
+		return nil,err2
 	}
 	container := met.Docker{
-		Image_: cfg.docker_image,
+		Image_: self.docker_image,
 	}
-	run, err := met.NewRun(cfg.cpus, cfg.disk, cfg.mem)
+	run, err := met.NewRun(self.cpus, self.disk, self.mem)
 
 	if err != nil {
 		return nil, err
 	}
-	if len(cfg.constraints) > 0 {
-		run.SetPlacement(&met.Placement{Constraints_: []met.Constraint(cfg.constraints)})
+	if len(self.constraints) > 0 {
+		run.SetPlacement(&met.Placement{Constraints_: []met.Constraint(self.constraints)})
 	}
-	if len(cfg.env) > 0 {
-		run.SetEnv(cfg.env)
+	if len(self.env) > 0 {
+		run.SetEnv(self.env)
 	}
 	if len(args) > 0 {
 		run.SetArgs([]string(args))
 	}
-	if len(cfg.volumes) > 0 {
-		run.SetVolumes([]met.Volume(cfg.volumes))
+	if len(self.volumes) > 0 {
+		run.SetVolumes([]met.Volume(self.volumes))
 	}
 
-	newJob, err6 := met.NewJob(cfg.JobId, cfg.description, (*met.Labels)(&cfg.labels), run)
+	newJob, err6 := met.NewJob(string(self.JobId), self.description, (*met.Labels)(&self.labels), run)
 	if err6 != nil {
 		panic(err6)
 	} else {
-		newJob.Run().SetDocker(&container).SetCmd(cfg.cmd)
+		newJob.Run().SetDocker(&container).SetCmd(self.cmd)
 	}
-	self.JobCreateConfig = &cfg
+
 	self.job = newJob
 	return self, nil
 }
 
 func (self *JobCreateRuntime) Execute(runtime *Runtime) (interface{}, error) {
-	runtime.client.CreateJob(self.job)
-	return nil
+	return runtime.client.CreateJob(self.job)
 }
 
 // DELETE /v1/jobs/$jobId
@@ -395,27 +407,27 @@ func (self *JobCreateRuntime) Execute(runtime *Runtime) (interface{}, error) {
 type JobDelete JobId
 
 func (self *JobDelete) Parse(args []string) (CommandExec, error) {
-	if _, err := (*JobId)(self).Parse(); err != nil {
+	if _, err := (*JobId)(self).Parse(args); err != nil {
 		return nil, err
 	}
 	return self, nil
 }
 
 func (self *JobDelete) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.DeleteJob((*JobId)(self))
+	return runtime.client.DeleteJob((string)(*self))
 }
 // GET /v1/jobs/$jobId
 type JobGet JobId
 
 func (self *JobGet) Parse(args []string) (CommandExec, error) {
-	if _, err := (*JobId)(self).Parse(); err != nil {
+	if _, err := (*JobId)(self).Parse(args); err != nil {
 		return nil, err
 	}
 	return self, nil
 }
 
 func (self *JobGet) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.GetJob((*JobId)(self)), nil
+	return runtime.client.GetJob( string(*self))
 }
 
 
@@ -427,10 +439,10 @@ func (self *JobList) Parse([] string) (CommandExec, error) {
 }
 func (self *JobList) Execute(runtime *Runtime) (interface{}, error) {
 	if jobs, err := runtime.client.Jobs(); err != nil {
-		return err
+		return nil, err
 	} else {
 		if b, err2 := json.Marshal(jobs); err2 != nil {
-			return err2
+			return nil,err2
 		} else {
 			return b, nil
 		}
@@ -438,17 +450,19 @@ func (self *JobList) Execute(runtime *Runtime) (interface{}, error) {
 }
 
 // PUT /v1/jobs/$jobId
-type JobUpdate JobId
+type JobUpdate JobCreateRuntime
 // JobUpdate - implement CommandParse
 func (self *JobUpdate) Parse(args [] string) (CommandExec, error) {
-	if _, err := (*JobId)(self).Parse(args); err != nil {
+	if _, err := (*JobUpdate)(self).Parse(args); err != nil {
 		return nil, err
+	} else if err2:= (*JobUpdate)(self).Validate(); err2 !=nil {
+		return nil,err
 	}
 	return self, nil
 }
 // JobUpdate - implement CommandExec
 func (self *JobUpdate) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.JobUpdate((*JobId)(self))
+	return runtime.client.JobUpdate(string(self.JobId),self.job)
 }
 
 
@@ -457,8 +471,8 @@ func (self *JobUpdate) Execute(runtime *Runtime) (interface{}, error) {
 //  GET  /v1/metrics
 type Metrics int
 
-func (self *Metrics) Parse(args []string) error {
-	return nil
+func (self *Metrics) Parse(args []string) (CommandExec,error) {
+	return self,nil
 }
 func (self *Metrics) Execute(runtime *Runtime) (interface{}, error) {
 	return runtime.client.Metrics()
@@ -467,31 +481,36 @@ func (self *Metrics) Execute(runtime *Runtime) (interface{}, error) {
 //  GET /v1/ping
 type Ping int
 
-func (self *Ping) Parse(args []string) error {
-	return nil
+func (self *Ping) Parse(args []string) (CommandExec,error) {
+	return self,nil
 }
-func (self *Ping) Execute(runtime *Runtime) (interface{} error) {
-return runtime.client.Ping()
+func (self *Ping) Execute(runtime *Runtime) (interface{}, error) {
+	if msg, err := runtime.client.Ping(); err != nil {
+		return nil, err
+	} else {
+//		result := json.RawMessage(msg)
+		return msg,nil
+	}
 }
 
 type RunsTopLevel JobTopLevel
 
-func (self *RunsTopLevel) Parse(args [] string) error {
+func (self *RunsTopLevel) Parse(args [] string) (CommandExec,error) {
 	if len(args) == 0 {
-		return errors.New("Don't understand")
+		return nil,errors.New("Don't understand")
 	}
 	self.subcommand = args[1]
 	switch self.subcommand {
 	case "ls":
-		self.task = &RunLs{}
+		self.task = CommandParse(new(RunLs))
 	case "get":
-		self.task = &RunStatusJob{}
+		self.task = CommandParse(new(RunStatusJob))
 	case "start":
-		self.task = &RunStartJob{}
+		self.task = CommandParse(new(RunStartJob))
 	case "stop":
-		self.task = &RunStopJob{}
+		self.task = CommandParse(new(RunStopJob))
 	default:
-		return errors.New("Missing job")
+		return nil,errors.New("Missing job")
 	}
 	return self.task.Parse(args[1:])
 }
@@ -507,7 +526,7 @@ func (self *RunLs) Parse(args []string) (CommandExec, error) {
 	}
 }
 func (self *RunLs) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.RunLs((*JobId)(self))
+	return runtime.client.RunLs(string(*self))
 }
 // POST /v1/jobs/$jobId/runs
 type RunStartJob JobId
@@ -520,7 +539,7 @@ func (self *RunStartJob) Parse(args []string) (CommandExec, error) {
 	}
 }
 func (self *RunStartJob) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.RunStartJob((*JobId)(self))
+	return runtime.client.RunStartJob(string(*self))
 }
 // GET  /v1/jobs/$jobId/runs/$runId
 type RunStatusJob struct {
@@ -554,10 +573,10 @@ func (self *RunStopJob) Parse(args []string) (CommandExec, error) {
 	if _, err := (*RunStatusJob)(self).Parse(args); err != nil {
 		return nil, err
 	}
-	return self,nil
+	return self, nil
 }
 func (self *RunStopJob) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.RunStopJob(string(self.JobId),string(self.RunId))
+	return runtime.client.RunStopJob(string(self.JobId), string(self.RunId))
 }
 
 
@@ -573,33 +592,33 @@ func NewSchedTopLevel() *JobTopLevel {
 	top := &JobTopLevel{}
 	return top
 }
-func (self *SchedTopLevel) Parse(args [] string) error {
+func (self *SchedTopLevel) Parse(args [] string) (CommandExec,error){
 	if len(args) == 0 {
-		return errors.New("Don't understand")
+		return nil,errors.New("Don't understand")
 	}
 	switch args[1] {
 
 	case "create":
 		// POST /v1/jobs/$jobId/schedules
-		self.task = &JobScheduleCreate{}
+		self.task = CommandParse(new(JobScheduleCreate))
 	case "ls":
 		// GET /v1/jobs/$jobId/schedules
-		self.task = &JobScheduleList{}
+		self.task = CommandParse(new(JobScheduleList))
 
 	case "delete":
 		// DELETE /v1/jobs/$jobid/schedules/$scheduleId
-		self.task = &JobSchedDelete{}
+		self.task = CommandParse(new(JobSchedDelete))
 	case "get":
 		// GET /v1/jobs/$jobId/schedules/$scheduleId
-		self.task = JobSchedGet()
+		self.task = CommandParse(new(JobSchedGet))
 	case "update":
 		// PUT /v1/jobs/$jobId/schedules/$scheduleId
-		self.task = SchedUpdate()
+		self.task = CommandParse(new(JobSchedUpdate))
 	default:
-		return errors.New("Missing job")
+		return nil,errors.New("Missing job")
 	}
-	self.task.Parse(args[1:])
-	return nil
+	return self.task.Parse(args[1:])
+
 }
 
 type JobSchedBase struct {
@@ -638,8 +657,8 @@ func (self *JobSchedGet) Parse(args []string) (CommandExec, error) {
 		return self, nil
 	}
 }
-func (self *JobSchedDelete) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.JobsScheduleGet(self.JobId, self.SchedId)
+func (self *JobSchedGet) Execute(runtime *Runtime) (interface{}, error) {
+	return runtime.client.JobScheduleGet(string(self.JobId), string(self.SchedId))
 }
 
 
@@ -654,7 +673,7 @@ func (self *JobSchedDelete) Parse(args []string) (CommandExec, error) {
 	}
 }
 func (self *JobSchedDelete) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.JobsScheduleDelete(self.JobId, self.SchedId)
+	return runtime.client.JobScheduleDelete(string(self.JobId), string(self.SchedId))
 }
 // GET /v1/jobs/$jobId/schedules
 type JobScheduleList JobId
@@ -665,9 +684,9 @@ func (self *JobScheduleList) Parse(args [] string) (CommandExec, error) {
 	}
 	return self, nil
 }
-// JobUpdate - implement CommandExec
+// JobScheduleList - implement CommandExec
 func (self *JobScheduleList) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.JobScheduleList((*JobId)(self))
+	return runtime.client.JobScheduleList(string(*self))
 }
 
 // POST /v1/jobs/$jobId/schedules
@@ -679,54 +698,76 @@ func (self *JobScheduleCreate) Parse(args [] string) (CommandExec, error) {
 	}
 	return self, nil
 }
-// JobUpdate - implement CommandExec
+// JobScheduleCreate- implement CommandExec
 func (self *JobScheduleCreate) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.JobScheduleCreate(self.JobId, &self.Schedule)
+	return runtime.client.JobScheduleCreate(string(self.JobId), &self.Schedule)
 }
 
-func init() {
+// PUT /v1/jobs/$jobId/schedules/$scheduleId
+type JobSchedUpdate JobSched
 
-}
-
-func in(val string, targ []string) bool {
-	for _, cur := range targ {
-		if cur == val {
-			return true
-		}
+func (self *JobSchedUpdate) Parse(args []string) (CommandExec, error) {
+	if _, err := (*JobSched)(self).Parse(args); err != nil {
+		return nil, err
+	} else {
+		return self, nil
 	}
-	return false
+}
+func (self *JobSchedUpdate) Execute(runtime *Runtime) (interface{}, error) {
+	return runtime.client.JobScheduleUpdate(string(self.JobId), string(self.Schedule.ID),&self.Schedule)
+}
+
+type Help int
+func (self *Help) Parse(args[]string) (CommandExec,error){
+	Usage("")
+	// no-op; Usage exists
+	return nil,nil
+}
+var commands CommandMap
+func init() {
+	commands = CommandMap{
+		"job": CommandParse(new(JobTopLevel)),
+		"runs": CommandParse(new(RunsTopLevel)),
+		"schedule": CommandParse(new(SchedTopLevel)),
+		"metrics": CommandParse(new(Metrics)),
+		"ping": CommandParse(new(Ping)),
+		"help": CommandParse(new(Help)),
+	}
+
 }
 
 func Usage(msg string) {
 	if msg != "" {
 		logrus.Errorf(" %s ", msg)
 	}
-	logrus.Errorf("usage: %s <global-options>%s [<args>]", os.Args[0], strings.Join(commands, "|"))
+	logrus.Errorf("usage: %s <global-options>%s [<args>]", os.Args[0], strings.Join([]string {
+		"job",
+		"runs",
+		"schedule",
+		"metrics",
+		"ping",
+		"help",
+	}, "|"))
 	fmt.Println(" <global options> run <run options>")
 
 	os.Exit(2)
 }
-
 func main() {
 	logrus.SetOutput(os.Stderr)
 
 	if len(os.Args) == 1 {
 		Usage("")
 	}
-
-	commands := CommandMap{
-		"job": &JobTopLevel{},
-		"runs": &RunsTopLevel{},
-		"schedule": &SchedTopLevel{},
-		"metrics": &Metrics{},
-		"ping": &Ping{},
+	keys := make([]string, 0, len(commands))
+	for k := range commands {
+		keys = append(keys, k)
 	}
 
 	index := -1
 
 	var action string
 	for v, value := range os.Args {
-		if in(value, reflect.ValueOf(commands).MapKeys()) {
+		if in(value, keys) {
 			index = v
 			action = value
 			break
@@ -742,7 +783,7 @@ func main() {
 
 		if _, err := runtime.Parse(commonArgs); err != nil {
 			panic(err)
-		} else if action == nil {
+		} else if action == "" {
 			panic(errors.New("missing action"))
 		} else if commands[action] == nil {
 			panic(errors.New(fmt.Sprintf("'%s' command not defined", action)))
@@ -753,13 +794,12 @@ func main() {
 			if result, err2 := executor.Execute(runtime); err2 != nil {
 				logrus.Fatalf("action %s execution failed because %+v\n", action, err2)
 			} else {
-				logrus.Infof(result)
+				logrus.Infof("result %+s\n",result)
 			}
 
 		}
 	} else {
-		Usage(fmt.Sprintf("Nothing to do.  You need one of these actions: {%s} ",
-			strings.Join(reflect.ValueOf(commands).MapKeys(), "|")))
+		Usage("Nothing to do.  You need to choose an actions\n")
 	}
 
 }

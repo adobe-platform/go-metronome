@@ -12,84 +12,162 @@ import (
 	"strconv"
 )
 
-func (client *Client) CreateJob(*Job) (interface{}, error)
-{
-
+func (client *Client) CreateJob(job *Job) (interface{}, error) {
+	var msg json.RawMessage
+	if err := client.apiPost(MetronomeAPIJobCreate, nil, job, msg); err != nil {
+		return nil, err
+	}
+	return msg, nil
 }
+
 // DELETE /v1/jobs/$jobId
-func (client *Client)  DeleteJob(jobId string) (interface{}, error){
-	json.
-	client.apiDelete(fmt.Sprintf(MetronomeAPIDeleteJob, jobId), nil, nil)
+func (client *Client)  DeleteJob(jobId string) (interface{}, error) {
+	var msg json.RawMessage
+	if err := client.apiDelete(fmt.Sprintf(MetronomeAPIJobDelete, jobId), nil, &msg); err != nil {
+		return nil, err
+	} else {
+		return msg, err
+	}
 }
 // GET /v1/jobs/$jobId
-func (client *Client) GetJob(jobId string) (*Job, error){
-
+func (client *Client) GetJob(jobId string) (*Job, error) {
+	var job Job
+	if err := client.apiGet(fmt.Sprintf(MetronomeAPIJobGet, jobId), nil, &job); err != nil {
+		return nil, err
+	} else {
+		return &job, err
+	}
 }
 // GET /v1/jobs
-func (client *Client)  Jobs() ([]Job, error){
+func (client *Client)  Jobs() (*[]Job, error) {
 	//	jobs := new(Jobs)
-	jobs := make([]Job,0,0)
+	jobs := make([]Job, 0, 0)
 
-	err := client.apiGet(MetronomeAPIJobs, nil, &jobs)
+	err := client.apiGet(MetronomeAPIJobList, nil, &jobs)
 
 	if err != nil {
 		return nil, err
 	}
-	return jobs,nil
+	return &jobs, nil
 }
 
 
 // PUT /v1/jobs/$jobId
-func (client *Client) JobUpdate(jobId string) (interface{}, error){
-
+func (client *Client) JobUpdate(jobId string, job *Job) (interface{}, error) {
+	var msg json.RawMessage
+	if err := client.apiPut(fmt.Sprint(MetronomeAPIJobUpdate, jobId), nil, &msg); err != nil {
+		return nil, err
+	}
+	return &msg, nil
 }
 //
 // schedules
 // GET /v1/jobs/$jobId/runs
-func (client *Client) RunLs(jobId string) (interface{}, error){
+func (client *Client) RunLs(jobId string) (*[]JobStatus, error) {
+	jobs := make([]JobStatus, 0, 0)
 
+	err := client.apiGet(MetronomeAPIJobRunList, nil, &jobs)
+
+	if err != nil {
+		return nil, err
+	}
+	return &jobs, nil
 }
 // POST /v1/jobs/$jobId/runs
-func (client *Client) RunStartJob(jobId string) (interface{}, error){
-
+func (client *Client) RunStartJob(jobId string) (interface{}, error) {
+	var msg json.RawMessage
+	if err := client.apiPost(fmt.Sprintf(MetronomeAPIJobRunStart, jobId), nil, jobId, &msg); err != nil {
+		return nil, err
+	}
+	return msg, nil
 }
 // GET /v1/jobs/$jobId/runs/$runId
-func (client *Client)  RunStatusJob(jobId string, runId string) (interface{}, error){
+func (client *Client)  RunStatusJob(jobId string, runId string) (*JobStatus, error) {
+	var job JobStatus
 
+	if err := client.apiGet(fmt.Sprintf(MetronomeAPIJobRunStatus, jobId, runId), nil, &job); err != nil {
+		return nil, err
+	} else {
+		return &job, err
+	}
 }
 // POST /v1/jobs/$jobId/runs/$runId/action/stop
-func (client *Client) RunStopJob(jobId string, runId string) (interface{}, error){
-
+func (client *Client) RunStopJob(jobId string, runId string) (interface{}, error) {
+	var msg json.RawMessage
+	if err := client.apiPost(fmt.Sprintf(MetronomeAPIJobRunStop, jobId, runId), nil, jobId, &msg); err != nil {
+		return nil, err
+	}
+	return msg, nil
 }
 
 //
 // Schedules
 //
 // POST /v1/jobs/$jobId/schedules
-func (client *Client) JobScheduleCreate(jobId string, new *Schedule) (interface{}, error){
+func (client *Client) JobScheduleCreate(jobId string, sched *Schedule) (interface{}, error) {
+	var msg json.RawMessage
+	if err := client.apiPost(fmt.Sprintf(MetronomeAPIJobScheduleCreate, jobId), nil, sched, &msg); err != nil {
+		return nil, err
+	}
+	return msg, nil
 
 }
 // GET /v1/jobs/$jobId/schedules/$scheduleId
-func (client *Client) JobsScheduleGet(jobId string, schedId string) (*[]Schedule, error){
+func (client *Client) JobScheduleGet(jobId string, schedId string) (*Schedule, error) {
+	var sched Schedule
 
+	if err := client.apiGet(fmt.Sprintf(MetronomeAPIJobScheduleStatus, jobId, schedId), nil, &sched); err != nil {
+		return nil, err
+	} else {
+		return &sched, err
+	}
 }
 // GET /v1/jobs/$jobId/schedules
-func (client *Client) JobScheduleList(jobId string) (interface{}, error){
+func (client *Client) JobScheduleList(jobId string) (*[]Schedule, error) {
+	scheds := make([]Schedule, 0, 0)
 
+	err := client.apiGet(fmt.Sprint(MetronomeAPIJobScheduleList, jobId), nil, &scheds)
+
+	if err != nil {
+		return nil, err
+	}
+	return &scheds, nil
 }
 // DELETE /v1/jobs/$jobId/schedules/$scheduleId
-func (client *Client) JobsScheduleDelete(jobId string , schedId string ){
+func (client *Client) JobScheduleDelete(jobId string, schedId string) (interface{}, error) {
+	var msg json.RawMessage
+	if err := client.apiDelete(fmt.Sprintf(MetronomeAPIJobScheduleDelete, jobId, schedId), nil, &msg); err != nil {
+		return nil, err
+	} else {
+		return msg, err
+	}
+}
+// PUT /v1/jobs/$jobId/schedules/$scheduleId
+func (client *Client) JobScheduleUpdate(jobId string, schedId string, sched *Schedule) (interface{}, error) {
+
+	if err := client.apiPut(fmt.Sprintf(MetronomeAPIJobScheduleUpdate, jobId, schedId), nil, sched); err != nil {
+		return nil, err
+	}
+	return sched, nil
 
 }
-
-
 //  GET  /v1/metrics
-func (client *Client) Metrics() (interface{}, error){
-
+func (client *Client) Metrics() (interface{}, error) {
+	msg := json.RawMessage{}
+	if err := client.apiGet(MetronomeAPIMetrics, nil, &msg); err != nil {
+		return nil, err
+	} else {
+		return &msg, err
+	}
 }
 //  GET /v1/ping
-func (client *Client) Ping() (interface{}, error){
-
+func (client *Client) Ping() (interface{}, error) {
+	msg := json.RawMessage{}
+	if err := client.apiGet(MetronomeAPIPing, nil, &msg); err != nil {
+		return nil, err
+	} else {
+		return &msg, err
+	}
 }
 
 // RunOnceNowSchedule will return a schedule that starts immediately, runs once,
@@ -99,11 +177,7 @@ func RunOnceNowSchedule() string {
 }
 
 
-// DeleteJob will delete a metronome job
-// name: The name of job you wish to delete
-func (client *Client) DeleteJob(name string) error {
-	return client.apiDelete(fmt.Sprintf(MetronomeAPIDeleteJob, name), nil, nil)
-}
+/*
 
 // StartJob can manually start a job
 // name: The name of the job to start
@@ -130,6 +204,7 @@ func (client *Client) RunOnceNowJob(job *Job) error {
 		return client.AddScheduledJob(job, sched)
 	}
 }
+*/
 
 func formatTimeString(t time.Time) string {
 	if t.IsZero() {
@@ -206,7 +281,6 @@ func ConvertIso8601ToCron(isoRep string) (string, error) {
 	return "", errors.New("Unknown error")
 }
 
-
 func ImmediateCrontab() string {
 	var (
 		y, M, d, h, m, s int
@@ -218,15 +292,15 @@ func ImmediateCrontab() string {
 	}
 
 }
-func ImmediateSchedule() (*Schedule,error) {
+func ImmediateSchedule() (*Schedule, error) {
 	var (
 		y, M, d, h, m, s int
 		cronstr string
 	)
 	if _, err := fmt.Sscanf(time.Now().Format(time.RFC3339), "%d-%d-%dT%d:%d:%dZ", &y, &M, &d, &h, &m, &s); err != nil {
-		return nil,err
+		return nil, err
 	} else {
-		cronstr  = fmt.Sprint("%d %d %d %d * %d%", m, h, d, M, y)
+		cronstr = fmt.Sprint("%d %d %d %d * %d%", m, h, d, M, y)
 	}
 
 	sched := &Schedule{
@@ -237,5 +311,5 @@ func ImmediateSchedule() (*Schedule,error) {
 		StartingDeadlineSeconds:60,
 		Timezone: "GMT",
 	}
-	return sched,nil
+	return sched, nil
 }

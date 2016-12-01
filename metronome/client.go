@@ -36,17 +36,17 @@ type Metronome interface {
 	// GET /v1/jobs/$jobId
 	GetJob(jobId string) (*Job, error)
 	// GET /v1/jobs
-	Jobs() ([]Job, error)
+	Jobs() (*[]Job, error)
 	// PUT /v1/jobs/$jobId
-	JobUpdate(jobId string) (interface{}, error)
+	JobUpdate(jobId string, job *Job) (interface{}, error)
 	//
 	// schedules
 	// GET /v1/jobs/$jobId/runs
-	RunLs(jobId string) (interface{}, error)
+	RunLs(jobId string) (*[]JobStatus , error)
 	// POST /v1/jobs/$jobId/runs
 	RunStartJob(jobId string) (interface{}, error)
 	// GET /v1/jobs/$jobId/runs/$runId
-	RunStatusJob(jobId string, runId string) (interface{}, error)
+	RunStatusJob(jobId string, runId string) (*JobStatus, error)
 	// POST /v1/jobs/$jobId/runs/$runId/action/stop
 	RunStopJob(jobId string, runId string) (interface{}, error)
 
@@ -56,13 +56,13 @@ type Metronome interface {
 	// POST /v1/jobs/$jobId/schedules
 	JobScheduleCreate(jobId string, new *Schedule) (interface{}, error)
 	// GET /v1/jobs/$jobId/schedules/$scheduleId
-	JobsScheduleGet(jobId string, schedId string) (*[]Schedule, error)
+	JobScheduleGet(jobId string, schedId string) (*Schedule, error)
 	// GET /v1/jobs/$jobId/schedules
-	JobScheduleList(jobId string) (interface{}, error)
+	JobScheduleList(jobId string) ( *[]Schedule, error)
 	// DELETE /v1/jobs/$jobId/schedules/$scheduleId
-	JobsScheduleDelete(jobId string , schedId string )// GET /v1/jobs/$jobId/schedules/$scheduleId
+	JobScheduleDelete(jobId string , schedId string ) (interface{}, error)
 	// PUT /v1/jobs/$jobId/schedules/$scheduleId
-
+	JobScheduleUpdate(jobId string, schedId string, sched *Schedule) (interface{}, error)
 
 	//  GET  /v1/metrics
 	Metrics() (interface{}, error)
