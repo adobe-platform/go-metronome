@@ -9,11 +9,9 @@ import (
 	"strings"
 	"time"
 	"io/ioutil"
-	//"log"
 	"github.com/Sirupsen/logrus"
-	//"bytes"
 	"bytes"
-)
+	)
 
 // Constants to represent HTTP verbs
 const (
@@ -105,38 +103,33 @@ func NewClient(config Config) (Metronome, error) {
 	return client, nil
 }
 
-func (client *Client) apiGet(uri string, queryParams map[string]string, result interface{}) error {
-	_, err := client.apiCall(HTTPGet, uri, queryParams, "", result)
-	return err
+func (client *Client) apiGet(uri string, queryParams map[string]string, result interface{}) (status int, err error) {
+	return  client.apiCall(HTTPGet, uri, queryParams, "", result)
 }
 
-func (client *Client) apiDelete(uri string, queryParams map[string]string, result interface{}) error {
-	_, err := client.apiCall(HTTPDelete, uri, queryParams, "", result)
-	return err
+func (client *Client) apiDelete(uri string, queryParams map[string]string, result interface{}) (status int, err error) {
+	return   client.apiCall(HTTPDelete, uri, queryParams, "", result)
+
 }
 
-func (client *Client) apiPut(uri string, queryParams map[string]string, putData interface{}, result interface{}) (err error) {
+func (client *Client) apiPut(uri string, queryParams map[string]string, putData interface{}, result interface{}) (status int,err error) {
 	var putDataString []byte
 	if putData != nil {
 		putDataString, err = json.Marshal(putData)
-		fmt.Printf("PUT %s\n", string(putDataString))
-		if err != nil {
-			return err
-		}
+		logrus.Debugf("PUT %s", string(putDataString))
 	}
-	_, err = client.apiCall(HTTPPut, uri, queryParams, string(putDataString), result)
-	return err
+	return client.apiCall(HTTPPut, uri, queryParams, string(putDataString), result)
 }
 
-func (client *Client) apiPost(uri string, queryParams map[string]string, postData interface{}, result interface{}) error {
+func (client *Client) apiPost(uri string, queryParams map[string]string, postData interface{}, result interface{}) (status int, err error) {
 	postDataString, err := json.Marshal(postData)
 
 	if err != nil {
-		return err
+		return http.StatusBadRequest, err
 	}
 
-	_, err = client.apiCall(HTTPPost, uri, queryParams, string(postDataString), result)
-	return err
+	return client.apiCall(HTTPPost, uri, queryParams, string(postDataString), result)
+
 }
 
 func (client *Client) apiCall(method string, uri string, queryParams map[string]string, body string, result interface{}) (int, error) {
@@ -164,7 +157,7 @@ func (client *Client) apiCall(method string, uri string, queryParams map[string]
 					return status,nil
 				default:
 					err = json.Unmarshal(msg, result)
-					if err != nil || status == http.StatusUnprocessableEntity {
+					if err != nil || status >= 400 { //== http.StatusUnprocessableEntity {
 						// metronome returns json error messages.  panic if so.
 						bb := new(bytes.Buffer)
 						fmt.Fprintf(bb, string(msg))
@@ -240,5 +233,5 @@ func (client *Client) httpCall(method string, body string) (int, *http.Response,
 
 // TODO: this better
 func (client *Client) log(message string, args ...interface{}) {
-	fmt.Printf(message + "\n", args...)
+	logrus.Infof(message + "\n", args...)
 }

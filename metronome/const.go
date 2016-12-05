@@ -24,7 +24,7 @@ const (
 	// GET /v1/jobs/$jobId/runs/$runId
 	MetronomeAPIJobRunStatus = "/v1/jobs/%s/runs/%s"
 	// POST /v1/jobs/$jobId/runs/$runId/action/stop
-	MetronomeAPIJobRunStop = "/v1/jobs/%s/runs/%s"
+	MetronomeAPIJobRunStop = "/v1/jobs/%s/runs/%s/actions/stop"
 
 	// Schecule Model
 

@@ -284,6 +284,8 @@ func (self *Restart) Policy() string {
 func NewRestart(activeDeadlineSeconds int, policy string) (*Restart, error) {
 	if len(policy) == 0 {
 		return nil, required("length(Restart.policy)>0")
+	} else if !(policy=="NEVER" || policy == "ON_FAILURE") {
+		return nil,errors.New(fmt.Sprintf("Policy must be 'ON_FAILURE' or 'NEVER' not %s",policy))
 	}
 	return &Restart{ActiveDeadlineSeconds_: activeDeadlineSeconds, Policy_: policy}, nil
 }
