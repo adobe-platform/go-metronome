@@ -2,20 +2,16 @@ package main
 
 import (
 	"fmt"
-	//	"time"
 	met "github.com/adobe-platform/go-metronome/metronome"
 	"github.com/Sirupsen/logrus"
 	"flag"
 	"os"
-	//	"strconv"
 	"strings"
 	"errors"
 	"encoding/json"
 	"io"
 	"bytes"
-	//"reflect"
 )
-
 // Command line defaults
 const (
 	DefaultHTTPAddr = "http://localhost:9000"
@@ -24,7 +20,8 @@ const (
 	DefaultMemory = 128
 	DefaultDisk = 128
 )
-
+//Runtime represents the global options passed to all CommandExec.Execute methods.
+//In particular, it keeps the metronome client and the other useful global options
 type Runtime struct {
 	httpAddr string
 	flags    *flag.FlagSet
@@ -32,42 +29,58 @@ type Runtime struct {
 	help     bool
 	client   met.Metronome
 }
+// CommandExec is an interface returned by Parse when options are successfully parsed
+// receiver Execute is passed the global options include the Metronome client interface
 type CommandExec interface {
-	Execute(*Runtime) (interface{}, error)
+	Execute(runtime *Runtime) (interface{}, error)
 }
+// CommandParse
+// implementor are passed arguments.
 type CommandParse interface {
-	Parse([]string) (CommandExec, error)
+	Parse(args []string) (CommandExec, error)
 	Usage(writer io.Writer)
 }
 type CommandMap map[string]CommandParse
 
-
-// Command line parameters overrides for flag
-
+var commands CommandMap
+//
+// Job{Create|Update} take many parameters that must be validated and stored in nested structures
+// These are set via flag.Var.  When using flag.Var, flag expects the passed pointer to implement the flag.Value interface
+// So as to not effect the behavior of the actual types, these critical types are effectively aliased below to provide
+// the correct command line handling for flag and the real type.  By doing so, it preserves the real types behavior
+// flag.Var calls flag.Value interface of the provided interface{}
+// The following light-weight types implement Value while preserving the Set/String symantics of the `real` type it alias.
 type RunArgs []string
 type NvList map[string]string
 type ConstraintList [] met.Constraint
 type VolumeList [] met.Volume
 type LabelList  met.Labels
+type ArtifactList  []met.Artifact
+
+// type override to support parsing.  []string alias for met.Run.Args
+// It implements flag.Value via Set/String
 
 func (i *RunArgs) String() string {
 	return fmt.Sprintf("%s", *i)
 }
 // The second method is Set(value string) error
 func (i *RunArgs) Set(value string) error {
-	logrus.Debugf("%s\n", value)
+	logrus.Debugf("Args.Set %s\n", value)
 	*i = append(*i, value)
 	return nil
 }
+// type override to support parsing.  LabelList alias' met.Labels
+// It implements flag.Value via Set/String
+
 func (i *LabelList) String() string {
 	return fmt.Sprintf("%s", *i)
 }
 // The second method is Set(value string) error
-func (i *LabelList) Set(value string) error {
-	logrus.Debugf("%s\n", value)
+func (lb *LabelList) Set(value string) error {
+	logrus.Debugf("LabelList %s\n", value)
 	v := strings.Split(value, ";")
-
-	lb := LabelList{}
+	logrus.Debugf("LabelList %+v\n", v)
+	//lb := LabelList{}
 	for _, ii := range v {
 		nv := strings.Split(ii, "=")
 		switch strings.ToLower(nv[0]) {
@@ -80,28 +93,32 @@ func (i *LabelList) Set(value string) error {
 		}
 	}
 	if lb.Location == ""  && lb.Owner == "" {
-
 		return errors.New("Missing both location and owner")
 	}
-	*i = lb
 	return nil
-
 }
+// type override to support parsing.  env alias' map[string]string
+// It implements flag.Value via Set/String
 
 func (i *NvList) String() string {
 	return fmt.Sprintf("%s", *i)
 }
-
 // The second method is Set(value string) error
-func (i *NvList) Set(value string) error {
-	logrus.Debugf("%s\n", value)
+func (self *NvList) Set(value string) error {
+	logrus.Debugf("NvList %+v %s\n", self, value)
 	nv := strings.Split(value, "=")
 	if len(nv) != 2 {
 		return errors.New("Environment vars should be NAME=VALUE")
 	}
-	map[string]string(*i)[nv[0]] = nv[1]
+	logrus.Debugf("NvList %+v\n", nv)
+	vv := (*self)
+	vv[nv[0]] = nv[1]
 	return nil
 }
+// ConstraintList
+// type override to support parsing.  ConstraintList alias' []met.Constraint
+// It implements flag.Value via Set/String
+
 func (i *ConstraintList) String() string {
 	return fmt.Sprintf("%s", *i)
 }
@@ -114,6 +131,8 @@ func (i *ConstraintList) Set(value string) error {
 		return nil
 	}
 }
+// type override to support parsing.  VolumeList alias' []met.Volume
+// It implements flag.Value via Set/String
 
 func (i *VolumeList) String() string {
 	return fmt.Sprintf("%s", *i)
@@ -133,14 +152,22 @@ func (i *VolumeList) Set(value string) error {
 	}
 	return nil
 }
-// Global flags
+// type override to support parsing.  ArtifactList alias' []met.Artifact
+// It implements flag.Value via Set/String
+func (i *ArtifactList) String() string {
+	return fmt.Sprintf("%s", *i)
+}
+// The second method is Set(value string) error
+func (i *ArtifactList) Set(value string) error {
+	return nil
+}
+//
+// Global flags are kept in 'Runtime'.  main takes care of sending Parse the correct list of args
+//
 func (self *Runtime) FlagSet(name  string) *flag.FlagSet {
 	flags := flag.NewFlagSet(name, flag.ExitOnError)
-	//	logrus.Debugf("runtime flags",)
 	flags.StringVar(&self.httpAddr, "metronome-url", DefaultHTTPAddr, "Set the Metronome address")
 	flags.BoolVar(&self.debug, "debug", false, "Turn on debug")
-
-	//logrus.Debugf("runtimeFlagSet %+v\n",flags)
 	return flags
 }
 func (self *Runtime) Usage(writer io.Writer) {
@@ -150,7 +177,6 @@ func (self *Runtime) Usage(writer io.Writer) {
 }
 func (self *Runtime) Parse(args []string) (CommandExec, error) {
 	flags := self.FlagSet("<global options> ")
-
 	if err := flags.Parse(args); err != nil {
 		return nil, err
 	}
@@ -165,7 +191,10 @@ func (self *Runtime) Parse(args []string) (CommandExec, error) {
 	// No exec returned
 	return nil, nil
 }
-
+//
+// Support parsing re-use
+// JobId, RunId, and SchedId are used in many calls.  Those 'types' are never used directly.  Instead they are part of other structs
+//
 // base class used to parse args for many commands requiring `job-id` parsing
 type JobId string
 
@@ -193,25 +222,22 @@ func (self *SchedId) Validate() error {
 	}
 	return nil
 }
-
+// RunId is used in several REST calls
 type RunId string
 
 func (self *RunId) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
 	flags.StringVar((*string)(self), "run-id", "", "Run Id")
 	return flags
 }
-
 func (self *RunId) Validate() error {
 	if string(*self) == "" {
 		return errors.New("run-id required")
 	}
 	return nil
 }
-
-// JobSched is
+// JobSched
 type JobSched struct {
 	JobId
-
 	met.Schedule
 }
 type JobSchedRun struct {
@@ -235,7 +261,7 @@ func (self *JobSched) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
 	flags.StringVar(&self.Schedule.Timezone, "tz", "GMT", "Schedule time zone")
 	flags.IntVar(&self.Schedule.StartingDeadlineSeconds, "start-deadline", 0, "Schedule deadline")
 	flags.StringVar(&self.Schedule.ConcurrencyPolicy, "concurrency-policy", "ALLOW", "Schedule concurrency.  One of ALLOW,FORBID,REPLACE")
-
+	flags.BoolVar(&self.Schedule.Enabled, "enabled",true,"Enable the schedule")
 	return flags
 }
 func (self *JobSched) Validate() error {
@@ -254,8 +280,9 @@ func (self *JobSched) Validate() error {
 
 	return nil
 }
-
-// jobs top level cli options
+//
+// jobs top level cli parse/execute
+//
 type JobTopLevel struct {
 	subcommand string
 	task       CommandParse
@@ -264,19 +291,15 @@ type JobTopLevel struct {
 func (self *JobTopLevel) Usage(writer io.Writer) {
 	fmt.Fprintf(writer, "job {create|delete|update|ls|get|schedules|schedule|help}\n")
 }
-
 func (self *JobTopLevel) Parse(args [] string) (exec CommandExec, err error) {
-
 	defer func() {
 		if r := recover(); r != nil {
 			buf := new(bytes.Buffer)
 			fmt.Fprintln(buf, r.(error).Error())
-			fmt.Fprintf(buf,"\njob %s usage:\n",self.subcommand)
-
+			fmt.Fprintf(buf, "\njob %s usage:\n", self.subcommand)
 			if self.task != nil {
 				self.task.Usage(buf)
 			}
-
 			self.Usage(buf)
 			err = errors.New(buf.String())
 		}
@@ -325,7 +348,7 @@ func (self *JobTopLevel) Parse(args [] string) (exec CommandExec, err error) {
 	if exec, err = self.task.Parse(subcommandArgs); err != nil {
 		panic(err)
 	} else {
-		return exec,err
+		return exec, err
 	}
 
 }
@@ -335,34 +358,36 @@ func (self *JobTopLevel) Parse(args [] string) (exec CommandExec, err error) {
 type JobCreateConfig struct {
 	JobId
 
-	cpus           float64
-	disk           int
-	mem            int
-	description    string
-	docker_image   string
-	restart_policy string
-	constraints    ConstraintList
-	volumes        VolumeList
-	env            NvList
-	labels         LabelList
-	args           RunArgs
-	cmd            string
-	user           string
-	maxLaunchDelay int
-	runNow         bool
+	cpus                    float64
+	disk                    int
+	mem                     int
+	description             string
+	docker_image            string
+	restart_policy          string
+	active_deadline_seconds int
+	constraints             ConstraintList
+	volumes                 VolumeList
+	env                     NvList
+	labels                  LabelList
+	artifacts               ArtifactList
+	args                    RunArgs
+	cmd                     string
+	user                    string
+	maxLaunchDelay          int
+	runNow                  bool
 }
 
-func (self *JobCreateConfig) makeJob() (*met.Job) {
+func (self *JobCreateConfig) makeJob() (*met.Job, error) {
 	container := met.Docker{
 		Image_: self.docker_image,
 	}
 	run, err := met.NewRun(self.cpus, self.disk, self.mem)
 
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	if self.maxLaunchDelay < 1 {
-		panic("max-launch-delay must be greater than 1")
+		return nil, errors.New("max-launch-delay must be greater than 1")
 	} else {
 		run.SetMaxLaunchDelay(self.maxLaunchDelay)
 	}
@@ -378,6 +403,10 @@ func (self *JobCreateConfig) makeJob() (*met.Job) {
 	if len(self.volumes) > 0 {
 		run.SetVolumes([]met.Volume(self.volumes))
 	}
+	if len(self.artifacts) > 0 {
+		run.SetArtifacts([]met.Artifact(self.artifacts))
+	}
+
 	var description string
 	if self.description != "" {
 		description = self.description
@@ -386,15 +415,22 @@ func (self *JobCreateConfig) makeJob() (*met.Job) {
 	if self.labels.Location != "" || self.labels.Owner != "" {
 		ll = (*met.Labels)(&self.labels)
 	}
-
+	if len(self.restart_policy) > 0 || self.active_deadline_seconds != 0 {
+		if restart, err := met.NewRestart(self.active_deadline_seconds, self.restart_policy); err != nil {
+			return nil, err
+		} else {
+			run.SetRestart(restart)
+		}
+	}
 	newJob, err := met.NewJob(string(self.JobId), description, ll, run)
 	if err != nil {
-		panic(err)
+		return nil, err
+
 	} else {
 		newJob.Run().SetDocker(&container).SetCmd(self.cmd)
 	}
 	logrus.Debugf("JobCreateRuntime: %+v\n", self)
-	return newJob
+	return newJob, nil
 
 }
 
@@ -404,15 +440,19 @@ type JobCreateRuntime struct {
 }
 
 func (self *JobCreateRuntime) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
-	//	flags := flag.NewFlagSet(name, flag.ExitOnError)
+	if self.env == nil {
+		self.env = make(map[string]string)
+	}
 
+	logrus.Debugf("nvlist: %+v\n", self.env)
 	flags.StringVar((*string)(&self.JobId), "job-id", "", "Job Id")
 	flags.StringVar(&self.description, "description", "", "Job Description - optional")
 	flags.StringVar((*string)(&self.docker_image), "docker-image", DefaultImage, "Docker Image")
 	flags.Float64Var(&self.cpus, "cpus", DefaultCPUs, "cpus")
 	flags.IntVar(&self.mem, "memory", DefaultMemory, "memory")
 	flags.IntVar(&self.disk, "disk", DefaultDisk, "disk")
-	flags.StringVar(&self.restart_policy, "restart-policy", "", "Restart policy on failure: NEVER or ALWAYS")
+	flags.StringVar(&self.restart_policy, "restart-policy", "NEVER", "Restart policy on job failure: NEVER or ALWAYS")
+	flags.IntVar(&self.active_deadline_seconds, "restart-active-deadline-seconds", 0, "If the job fails, how long should we try to restart the job. If no value is set, this means forever.")
 	flags.Var(&self.constraints, "constraint", "Add Constraint used to construct Job->Run->[]Constraint")
 	flags.Var(&self.volumes, "volume", "/host:/container:{RO|RW} . Adds Volume passed to metrononome->Job->Run->Volumes. You can call more than once")
 	flags.Var(&self.args, "arg", "Adds Arg metrononome->Job->Run->Args. You can call more than once")
@@ -455,13 +495,17 @@ func (self *JobCreateRuntime) Parse(args []string) (exec CommandExec, err error)
 			err = errors.New(buf.String())
 		}
 	}()
+
 	if err = flags.Parse(args); err != nil {
 		panic(err)
 	} else if err = self.Validate(); err != nil {
 		panic(err)
 	}
-	self.job = self.JobCreateConfig.makeJob()
-	return self,nil
+	if self.job, err = self.JobCreateConfig.makeJob(); err != nil {
+		return nil, err
+	} else {
+		return self, nil
+	}
 }
 
 func (self *JobCreateRuntime) Execute(runtime *Runtime) (interface{}, error) {
@@ -534,12 +578,9 @@ func (self *JobGet) Parse(args []string) (exec CommandExec, err error) {
 		return self, nil
 	}
 }
-
 func (self *JobGet) Execute(runtime *Runtime) (interface{}, error) {
 	return runtime.client.GetJob(string(*self))
 }
-
-
 // GET /v1/jobs
 type JobList int
 
@@ -554,10 +595,9 @@ func (self *JobList) Execute(runtime *Runtime) (interface{}, error) {
 	if jobs, err := runtime.client.Jobs(); err != nil {
 		return nil, err
 	} else {
-		return jobs,nil
+		return jobs, nil
 	}
 }
-
 // PUT /v1/jobs/$jobId
 type JobUpdate JobCreateRuntime
 
@@ -585,16 +625,17 @@ func (self *JobUpdate) Parse(args [] string) (_ CommandExec, err error) {
 	} else if err = (*JobCreateRuntime)(self).Validate(); err != nil {
 		panic(err)
 	} else {
-		self.job = self.JobCreateConfig.makeJob()
-		return self, nil
+		if self.job, err = self.JobCreateConfig.makeJob(); err != nil {
+			return nil, err
+		} else {
+			return self, nil
+		}
 	}
 }
 // JobUpdate - implement CommandExec
 func (self *JobUpdate) Execute(runtime *Runtime) (interface{}, error) {
 	return runtime.client.JobUpdate(string(self.JobId), self.job)
 }
-
-
 
 // Metrics top level
 //  GET  /v1/metrics
@@ -651,7 +692,7 @@ func (self *RunsTopLevel) Parse(args [] string) (exec CommandExec, err error) {
 		if r := recover(); r != nil {
 			buf := new(bytes.Buffer)
 			fmt.Fprintln(buf, r.(error).Error())
-			fmt.Fprintf(buf,"\n %s usage:\n",self.subcommand)
+			fmt.Fprintf(buf, "\n %s usage:\n", self.subcommand)
 
 			if self.task != nil {
 				self.task.Usage(buf)
@@ -689,7 +730,7 @@ func (self *RunsTopLevel) Parse(args [] string) (exec CommandExec, err error) {
 	if exec, err = self.task.Parse(subcommandArgs); err != nil {
 		panic(err)
 	} else {
-		return exec,err
+		return exec, err
 	}
 }
 
@@ -840,8 +881,6 @@ func (self *RunStopJob) Parse(args []string) (_ CommandExec, err error) {
 func (self *RunStopJob) Execute(runtime *Runtime) (interface{}, error) {
 	return runtime.client.RunStopJob(string(self.JobId), string(self.RunId))
 }
-
-
 //
 // Schedule
 //
@@ -860,13 +899,12 @@ func (self *SchedTopLevel) Usage(writer io.Writer) {
 	  ls
 	`)
 }
-
 func (self *SchedTopLevel) Parse(args [] string) (exec CommandExec, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			buf := new(bytes.Buffer)
 			fmt.Fprintln(buf, r.(error).Error())
-			fmt.Fprintf(buf,"\nschedule %s usage:\n",self.subcommand)
+			fmt.Fprintf(buf, "\nschedule %s usage:\n", self.subcommand)
 
 			if self.task != nil {
 				self.task.Usage(buf)
@@ -883,7 +921,6 @@ func (self *SchedTopLevel) Parse(args [] string) (exec CommandExec, err error) {
 
 	self.subcommand = args[0]
 	switch self.subcommand {
-
 	case "create":
 		// POST /v1/jobs/$jobId/schedules
 		self.task = CommandParse(new(JobScheduleCreate))
@@ -909,17 +946,16 @@ func (self *SchedTopLevel) Parse(args [] string) (exec CommandExec, err error) {
 	if len(args) > 1 {
 		subcommandArgs = args[1:]
 	}
-	logrus.Debugf("schedule %s args: %+v  task: %+v\n", self.subcommand, subcommandArgs,self.task)
+	logrus.Debugf("schedule %s args: %+v  task: %+v\n", self.subcommand, subcommandArgs, self.task)
 	if exec, err = self.task.Parse(subcommandArgs); err != nil {
-		fmt.Errorf("SchedTopLevel parse failed %+v\n",err)
+		fmt.Errorf("SchedTopLevel parse failed %+v\n", err)
 		panic(err)
 	} else {
-		fmt.Errorf("SchedTopLevel parse succeeded %+v\n",exec)
-		return exec,nil
+		fmt.Errorf("SchedTopLevel parse succeeded %+v\n", exec)
+		return exec, nil
 	}
-
 }
-
+// JobSchedBase collects parsing behavior needed in child classes
 type JobSchedBase struct {
 	JobId
 	SchedId
@@ -930,7 +966,6 @@ func (self *JobSchedBase) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
 	self.SchedId.FlagSet(flags)
 	return flags
 }
-
 func (self *JobSchedBase) Validate() error {
 	if err := self.JobId.Validate(); err != nil {
 		return err
@@ -972,8 +1007,6 @@ func (self *JobSchedGet) Parse(args []string) (_ CommandExec, err error) {
 func (self *JobSchedGet) Execute(runtime *Runtime) (interface{}, error) {
 	return runtime.client.JobScheduleGet(string(self.JobId), string(self.SchedId))
 }
-
-
 // DELETE /v1/jobs/$jobId/schedules/$scheduleId
 type JobSchedDelete JobSchedBase
 
@@ -983,7 +1016,6 @@ func (self *JobSchedDelete) Usage(writer io.Writer) {
 	flags.SetOutput(writer)
 	flags.PrintDefaults()
 }
-
 func (self *JobSchedDelete) Parse(args []string) (_ CommandExec, err error) {
 	flags := flag.NewFlagSet("schedule delete", flag.ExitOnError)
 	(*JobSchedBase)(self).FlagSet(flags)
@@ -1067,7 +1099,7 @@ func (self *JobScheduleCreate) Parse(args [] string) (_ CommandExec, err error) 
 		}
 	}()
 	if err = flags.Parse(args); err != nil {
-		logrus.Debugf("JobScheduleCreate.parse failed %+v\n",err)
+		logrus.Debugf("JobScheduleCreate.parse failed %+v\n", err)
 		panic(err)
 	} else if err = (*JobSched)(self).Validate(); err != nil {
 		panic(err)
@@ -1114,9 +1146,7 @@ func (self *JobSchedUpdate) Parse(args []string) (_ CommandExec, err error) {
 func (self *JobSchedUpdate) Execute(runtime *Runtime) (interface{}, error) {
 	return runtime.client.JobScheduleUpdate(string(self.JobId), string(self.Schedule.ID), &self.Schedule)
 }
-
-var commands CommandMap
-
+// initialize the top level command map
 func init() {
 	commands = CommandMap{
 		"job": CommandParse(new(JobTopLevel)),
@@ -1125,7 +1155,6 @@ func init() {
 		"metrics": CommandParse(new(Metrics)),
 		"ping": CommandParse(new(Ping)),
 	}
-
 }
 
 func Usage(msg string) {
@@ -1155,9 +1184,7 @@ func main() {
 	for k := range commands {
 		keys = append(keys, k)
 	}
-
 	index := -1
-
 	var action string
 	for v, value := range os.Args {
 		if in(value, keys) {
@@ -1174,7 +1201,7 @@ func main() {
 		} else {
 			logrus.Debugf("No command args used\n")
 		}
-		logrus.Debugf("commonArgs %+v action: %s\n", commonArgs,action)
+		logrus.Debugf("commonArgs %+v action: %s\n", commonArgs, action)
 		if _, err := runtime.Parse(commonArgs); err != nil {
 			panic(err)
 		} else if action == "" {
@@ -1185,7 +1212,6 @@ func main() {
 		if runtime.debug {
 			logrus.SetLevel(logrus.DebugLevel)
 		}
-
 		var executorArgs []string
 		if len(os.Args) > (index + 1) {
 			executorArgs = os.Args[index + 1:]
@@ -1199,20 +1225,16 @@ func main() {
 			if result, err2 := executor.Execute(runtime); err2 != nil {
 				logrus.Fatalf("action %s execution failed because %+v\n", action, err2)
 			} else {
-				if bb,err7 := json.Marshal(result); err7==nil {
-					logrus.Infof("result %s\n",(string(bb)))
+				if bb, err7 := json.Marshal(result); err7 == nil {
+					logrus.Infof("result %s\n", (string(bb)))
 				}
-
 			}
-
 		}
 	} else {
-
 		if len(os.Args) > 1 {
 			Usage("You need to include a verb")
 		} else {
 			Usage("Nothing to do.  You need to choose an action\n")
 		}
 	}
-
 }
