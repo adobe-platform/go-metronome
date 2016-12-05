@@ -5,7 +5,7 @@ const (
 	// Job model
 
 	// POST /v1/jobs
-	MetronomeAPIJobCreate = "/v1/jobs/%s"
+	MetronomeAPIJobCreate = "/v1/jobs"
 	// DELETE /v1/jobs/$jobId
 	MetronomeAPIJobDelete = "/v1/jobs/%s"
 	// GET /v1/jobs/$jobId
@@ -18,7 +18,7 @@ const (
 	// Run model
 
 	// GET /v1/jobs/$jobId/runs
-	MetronomeAPIJobRunList = "/v1/jobs/%s/runs/%s"
+	MetronomeAPIJobRunList = "/v1/jobs/%s/runs"
 	// POST /v1/jobs/$jobId/runs
 	MetronomeAPIJobRunStart = "/v1/jobs/%s/runs"
 	// GET /v1/jobs/$jobId/runs/$runId

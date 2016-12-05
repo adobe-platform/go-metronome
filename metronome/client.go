@@ -11,6 +11,8 @@ import (
 	"io/ioutil"
 	//"log"
 	"github.com/Sirupsen/logrus"
+	//"bytes"
+	"bytes"
 )
 
 // Constants to represent HTTP verbs
@@ -32,7 +34,7 @@ type MetronomeChronos interface {
 
 type Metronome interface {
 	// POST /v1/jobs
-	CreateJob(*Job) (interface{}, error)
+	CreateJob(*Job) (*Job, error)
 	// DELETE /v1/jobs/$jobId
 	DeleteJob(jobId string) (interface{}, error)
 	// GET /v1/jobs/$jobId
@@ -69,7 +71,7 @@ type Metronome interface {
 	//  GET  /v1/metrics
 	Metrics() (interface{}, error)
 	//  GET /v1/ping
-	Ping() (interface{}, error)
+	Ping() (*string, error)
 }
 
 
@@ -113,8 +115,16 @@ func (client *Client) apiDelete(uri string, queryParams map[string]string, resul
 	return err
 }
 
-func (client *Client) apiPut(uri string, queryParams map[string]string, result interface{}) error {
-	_, err := client.apiCall(HTTPPut, uri, queryParams, "", result)
+func (client *Client) apiPut(uri string, queryParams map[string]string, putData interface{}, result interface{}) (err error) {
+	var putDataString []byte
+	if putData != nil {
+		putDataString, err = json.Marshal(putData)
+		fmt.Printf("PUT %s\n", string(putDataString))
+		if err != nil {
+			return err
+		}
+	}
+	_, err = client.apiCall(HTTPPut, uri, queryParams, string(putDataString), result)
 	return err
 }
 
@@ -136,30 +146,45 @@ func (client *Client) apiCall(method string, uri string, queryParams map[string]
 	if err != nil {
 		return 0, err
 	}
-	logrus.Debugf("%s result status: %d\n", uri, response.Status)
-	logrus.Debugf("Headers: %+v\n\n", response.Header)
+	logrus.Debugf("%s result status: %d", uri, response.Status)
+	logrus.Debugf("Headers: %+v", response.Header)
 	if response.ContentLength > 0 {
 		ct := response.Header["Content-Type"]
-		logrus.Debugf("content-type: %s\n",ct)
+		logrus.Debugf("content-type: %s", ct)
 		switch ct[0] {
 		case "application/json":
-			err = json.NewDecoder(response.Body).Decode(result)
-			if err != nil {
+			var msg json.RawMessage
+			err = json.NewDecoder(response.Body).Decode(&msg)
+			// decode as a raw json message which will fail if the message isn't good json
+			if err == nil {
+				switch result.(type){
+				case json.RawMessage:
+					tt := result.(*json.RawMessage)
+					*tt = msg
+					return status,nil
+				default:
+					err = json.Unmarshal(msg, result)
+					if err != nil || status == http.StatusUnprocessableEntity {
+						// metronome returns json error messages.  panic if so.
+						bb := new(bytes.Buffer)
+						fmt.Fprintf(bb, string(msg))
+						return status, errors.New(string(bb.Bytes()))
+					}
+					logrus.Debugf("method %s uri: %s status: %d result: %+v", method, uri, status, result)
+				}
+			} else {
 				return status, err
 			}
+
 		case "text/plain; charset=utf-8":
 			if htmlData, err := ioutil.ReadAll(response.Body); err != nil {
 				return status, err
 			} else {
 				v := result.(*string)
-				v2 := string(htmlData)
-				v = &v2
-				// compiler see v as unused
-				if v != nil{}
-				logrus.Debugf("text bytes: %d result: %+v %+v\n",len(htmlData),htmlData,v)
+				*v = string(htmlData)
 			}
 		default:
-			return status,errors.New(fmt.Sprintf("Unknown content-type %s",ct[0]))
+			return status, errors.New(fmt.Sprintf("Unknown content-type %s", ct[0]))
 		}
 
 	}
