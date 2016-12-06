@@ -7,10 +7,15 @@ The Metronome V1 interface is fully implemented.
 # Getting started
 You don't need golang installed if you have docker installed.
 
-- If you want to install locally
+- If you want to install the cli locally
 ```
-go get github.com/adobe-platform/go-metronome
+go get github.com/adobe-platform/go-metronome/metronome-cli
 ```
+- If you want to install the API (sans cli) locally
+```
+go get github.com/adobe-platform/go-metronome/metronome
+```
+
 - If you want to build a docker image
 ```
 # git clone https://github.com/adobe-platform/go-metronome.git
@@ -22,8 +27,22 @@ go get github.com/adobe-platform/go-metronome
 $(eval make run) job ls
 ```
 
+- If you want a dev container (golang, deps)
+
+```
+make run-dev
+```
+
+- If you want to build a Linux and Darwin cli binary
+
+```
+make compile
+```
+
+Yielding:> go-metronome-cli-linux-amd64 and go-metronome-cli-darwin-amd64
 
 # V1 Interface
+
 
 ```
 type Metronome interface {
@@ -68,6 +87,8 @@ type Metronome interface {
 	Ping() (*string, error)
 }
 ```
+
+Note:> [Metronome V1 API](https://dcos.github.io/metronome/docs/generated/api.html#)
 
 Simple client
 
@@ -301,4 +322,136 @@ Server: openresty/1.9.15.1
 
 - Now use `metronome-cli`
 
-http_proxy=localhost:8123 
+```
+http_proxy=localhost:8123 /usr/local/bin/go-metronome-cli-linux-amd64
+```
+
+# Detailed CLI Usage
+
+## No options
+```
+/usr/local/bin/go-metronome-cli-linux-amd64 <global-options> <action: one of {job|run|schedule|metrics|ping|help}> [<action options>|help ] 
+ For more help, use 
+  -debug
+        Turn on debug
+  -metronome-url string
+        Set the Metronome address (default "http://localhost:9000")
+```
+## job sub menu
+```
+docker run -i --rm --net host -t adobe-platform/go-metronome:029ef7418691d812dacc4a01ded16598cfbe7ccb /usr/local/bin/go-metronome-cli-linux-amd64 job       
+FATA[0000] job failed because job subcommand required
+
+job  usage:
+job {create|delete|update|ls|get|schedules|schedule|help}
+
+```
+
+###  `job create`
+
+```
+docker run -i --rm --net host -t adobe-platform/go-metronome:029ef7418691d812dacc4a01ded16598cfbe7ccb /usr/local/bin/go-metronome-cli-linux-amd64 job create
+
+job create usage:
+  -arg value
+        Adds Arg metrononome->Job->Run->Args. You can call more than once
+  -cmd string
+        Command to run
+  -constraint value
+        Add Constraint used to construct Job->Run->[]Constraint
+  -cpus float
+        cpus (default 0.2)
+  -description string
+        Job Description - optional
+  -disk int
+        disk (default 128)
+  -docker-image string
+        Docker Image (default "alpine:3.4")
+  -env value
+        VAR=VAL . Adds Volume passed to metrononome->Job->Run->Volumes.  You can call more than once
+  -job-id string
+        Job Id
+  -label value
+        Location=xxx; Owner=yyy
+  -max-launch-delay int
+        Max Launch delay.  minimum 1 (default 900)
+  -memory int
+        memory (default 128)
+  -restart-active-deadline-seconds int
+        If the job fails, how long should we try to restart the job. If no value is set, this means forever.
+  -restart-policy string
+        Restart policy on job failure: NEVER or ALWAYS (default "NEVER")
+  -run-now
+        Run this job now, otherwise it is created as unscheduled
+  -user string
+        user to run as (default "root")
+  -volume value
+        /host:/container:{RO|RW} . Adds Volume passed to metrononome->Job->Run->Volumes. You can call more than once
+```
+
+## schedule submenu
+```
+docker run -i --rm --net host -t adobe-platform/go-metronome:029ef7418691d812dacc4a01ded16598cfbe7ccb /usr/local/bin/go-metronome-cli-linux-amd64 schedule 
+FATA[0000] schedule failed because sub command required
+
+schedule  usage:
+schedule {create|delete|update|get|ls}  
+
+          create  <options>
+          delete  <options>
+          update  <options>
+          get     <options>
+          ls
+
+
+```
+
+### schedule create
+```
+docker run -i --rm --net host -t adobe-platform/go-metronome:029ef7418691d812dacc4a01ded16598cfbe7ccb /usr/local/bin/go-metronome-cli-linux-amd64 schedule create
+FATA[0000] schedule failed because Missing JobId in JobScheduleCreate
+
+
+schedule create usage:
+  -concurrency-policy string
+        Schedule concurrency.  One of ALLOW,FORBID,REPLACE (default "ALLOW")
+  -cron string
+        Schedule Cron
+  -enabled
+        Enable the schedule (default true)
+  -job-id string
+        Job Id
+  -sched-id string
+        Schedule Id
+  -start-deadline int
+        Schedule deadline
+  -tz string
+        Schedule time zone (default "GMT")
+
+```
+
+## run submenu
+```
+docker run -i --rm --net host -t adobe-platform/go-metronome:029ef7418691d812dacc4a01ded16598cfbe7ccb /usr/local/bin/go-metronome-cli-linux-amd64 run            
+FATA[0000] run failed because sub command required
+
+  usage:
+run <action> [options]:
+
+          start [options]
+          stop  [options]
+          ls
+          get [options]
+
+          Call run <action> help for more on a sub-command
+```
+### run create
+```
+docker run -i --rm --net host -t adobe-platform/go-metronome:029ef7418691d812dacc4a01ded16598cfbe7ccb /usr/local/bin/go-metronome-cli-linux-amd64 run start 
+FATA[0000] run failed because job-id required
+
+
+ start usage:
+  -job-id string
+        Job Id
+```
