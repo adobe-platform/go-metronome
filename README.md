@@ -39,7 +39,7 @@ make run-dev
 make compile
 ```
 
-Yielding:> go-metronome-cli-linux-amd64 and go-metronome-cli-darwin-amd64
+> Yielding `go-metronome/go-metronome-cli-linux-amd64` and `go-metronome/go-metronome-cli-darwin-amd64`
 
 # V1 Interface
 
@@ -88,7 +88,7 @@ type Metronome interface {
 }
 ```
 
-Note:> [Metronome V1 API](https://dcos.github.io/metronome/docs/generated/api.html#)
+> Reference [Metronome V1 API](https://dcos.github.io/metronome/docs/generated/api.html#)
 
 Simple client
 
@@ -110,7 +110,7 @@ The following examples assume you've started metronome infrastructure as:
 DOCKER_IP=10.0.2.15 docker-compose -f docker-compose.yml up
 ```
 
-Note:> DOCKER_IP should be the ip address of your `eth0` network interface
+> DOCKER_IP should be the ip address of your `eth0` network interface
 
 Using the docker-compose.yml file, you should see the following instances runnings.
 ```
@@ -132,7 +132,7 @@ INFO[0000] result {"description":"","id":"dcos.locust","labels":{"location":"","
 
 ## Update a job
 
-Note> Job Update looks like Create.
+> Job Update looks like Create.
 
 ```
 # metronome-cli/metronome-cli job update -docker-image f4tq/dcos-tests:v0.31 -cmd '/usr/local/bin/dcos-tests --debug --term-wait 20 --http-addr :8095' -job-id "dcos.locust" --env "MON=test" --env "CONNECT=direct"
@@ -148,7 +148,7 @@ INFO[0000] result {"description":"","id":"dcos.locust","labels":{"location":"","
 ```
 ## Get all job definitions
 
-Note:> Not to be confused with `running` jobs
+> Not to be confused with `running` jobs
 
 ```
 # metronome-cli/metronome-cli job ls
@@ -181,7 +181,7 @@ a50c32104523        mesosphere/marathon:v1.3.0                        "./bin/sta
 
 ```
 
-Note> The new job is `mesos-22357193-cfdd-48e6-b3ed-288c2a906bb0-S0.66f17489-615b-4b52-8a8c-395b3c6ccaa2`
+> The new, metronome created job is `mesos-22357193-cfdd-48e6-b3ed-288c2a906bb0-S0.66f17489-615b-4b52-8a8c-395b3c6ccaa2`
 
 `f4tq/dcos-test:v0.3` listens on port 8095 as we defined in the job definitions --cmd option
 
@@ -219,7 +219,7 @@ INFO[0000] result {"description":"","id":"foo.bar","labels":{"location":"","owne
 
 ### Schedule the periodic job definition to run every 2 minutes
 
-Note> This doesn't start the job yet!
+> Note: This doesn't start the job yet!
 
 ```
 # metronome-cli/metronome-cli schedule create -job-id foo.bar -sched-id ever2 -cron "*/2 * * * *" --start-deadline 60
@@ -242,7 +242,7 @@ On 3rd thought, I don't like the schedule name so I'll delete the schedule
 metronome-cli/metronome-cli schedule delete -job-id foo.bar --sched-id ever2
 INFO[0000] result "OK"
 ```
-Note:> You can't delete a schedule if the job is already running.  Stop it first.
+> You can't delete a schedule if the job is already running.  Stop it first.
  
 ### Run the job with the schedule
 ```
@@ -251,16 +251,20 @@ INFO[0000] result {"id":"foo.bar","description":"","labels":{},"run":{"cpus":0.2
 ```
 
 # Using with dc/os
-This guide assumes you work at Adobe and you need to access a bastion host to reach via a bastion host.  It also assumes that you are accessing the DC/OS universe, mesos master, marathon and metronome via the tunnel.
+This guide assumes you work at Adobe and you need to access a bastion host to reach via your dcos cluster.  It also assumes that you are accessing the DC/OS universe, mesos master, marathon and metronome via the tunnel.
 
 ## Set up an ssh tunnel
-- Get permission from Juniper
+- Get ssh out permission from Juniper
+
 - ssh to you bastion like
+
 ```
-ssh -o DynamicForward=localhost:1200 -N &
+ssh -o DynamicForward=localhost:1200 -N ec2-user@$your_bastion_host &
 ```
+
 - Set up an http proxy that knows how 
   - Install polipo
+
 ``` 
   vagrant@osx $ apt-get install polipo
 ```
@@ -269,7 +273,7 @@ ssh -o DynamicForward=localhost:1200 -N &
 sudo polipo socksParentProxy=localhost:1200 diskCacheRoot=/dev/null
 ```
 
-Note:> By default, `polipo` listens on port 8123 for proxy connections
+> By default, `polipo` listens on port 8123 for proxy connections
 
 - Install dcos cli
 
@@ -278,8 +282,12 @@ Left to the reader
 
 
 - Make dc/os cli use the proxy and login.
+
+For example:
+
 ```
-http_proxy=localhost:8123  dcos auth login
+# http_proxy=localhost:8123  dcos auth login
+
 
 Please go to the following link in your browser:
 
@@ -290,7 +298,7 @@ Login successful!
 
 ```
 
-Note:>  Use firefox to get your token - which must also use the SOCKS 5 proxy.   `/Applications/Firefox.app/Contents/MacOS/firefox-bin -profilemanager` 
+>  Use firefox to get your token - which must also use the SOCKS 5 proxy.   Launch `/Applications/Firefox.app/Contents/MacOS/firefox-bin -profilemanager`. Navigate to Preferences->Advanced->Network->Settings. Click `Manual proxy`; SOCKS Host: `localhost:1200`; Click `SOCKS v5`; click `Remote DNS`
 
 
 - Now the token with metronome-cli 
