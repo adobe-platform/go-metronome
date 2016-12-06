@@ -84,14 +84,14 @@ func main() {
 		if len(os.Args) > (index + 1) {
 			executorArgs = os.Args[index + 1:]
 		}
-		logrus.Debugf("executorArgs %+v\n", executorArgs)
+		logrus.Debugf("executorArgs %+v", executorArgs)
 		if action == "help" {
 			Usage("your help:")
 		} else if executor, err := commands[action].Parse(executorArgs); err != nil {
-			logrus.Fatalf("%s failed because %+v\n", action, err)
+			logrus.Fatalf("%s failed because %+v", action, err)
 		} else {
 			if result, err2 := executor.Execute(runtime); err2 != nil {
-				logrus.Fatalf("action %s execution failed because %+v\n", action, err2)
+				logrus.Fatalf("action %s execution failed because %+v", action, err2)
 			} else {
 				if bb, err7 := json.Marshal(result); err7 == nil {
 					logrus.Infof("result %s\n", (string(bb)))

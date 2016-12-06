@@ -51,7 +51,7 @@ func (self *SchedTopLevel) Parse(args [] string) (exec CommandExec, err error) {
 			err = errors.New(buf.String())
 		}
 	}()
-	logrus.Debugf("ScheduleTopLevel args: %+v\n", args)
+	logrus.Debugf("ScheduleTopLevel args: %+v", args)
 
 	if len(args) == 0 {
 		panic(errors.New("sub command required"))
@@ -84,7 +84,7 @@ func (self *SchedTopLevel) Parse(args [] string) (exec CommandExec, err error) {
 	if len(args) > 1 {
 		subcommandArgs = args[1:]
 	}
-	logrus.Debugf("schedule %s args: %+v  task: %+v\n", self.subcommand, subcommandArgs, self.task)
+	logrus.Debugf("schedule %s args: %+v  task: %+v", self.subcommand, subcommandArgs, self.task)
 	if exec, err = self.task.Parse(subcommandArgs); err != nil {
 		fmt.Errorf("SchedTopLevel parse failed %+v\n", err)
 		panic(err)
@@ -223,7 +223,7 @@ func (self *JobScheduleCreate) Usage(writer io.Writer) {
 	flags.PrintDefaults()
 }
 func (self *JobScheduleCreate) Parse(args [] string) (_ CommandExec, err error) {
-	logrus.Debugf("JobScheduleCreate.parse args: %+v\n", args)
+	logrus.Debugf("JobScheduleCreate.parse args: %+v", args)
 	flags := flag.NewFlagSet("schedule create", flag.ExitOnError)
 	(*JobSched)(self).FlagSet(flags)
 
@@ -237,7 +237,7 @@ func (self *JobScheduleCreate) Parse(args [] string) (_ CommandExec, err error) 
 		}
 	}()
 	if err = flags.Parse(args); err != nil {
-		logrus.Debugf("JobScheduleCreate.parse failed %+v\n", err)
+		logrus.Debugf("JobScheduleCreate.parse failed %+v", err)
 		panic(err)
 	} else if err = (*JobSched)(self).Validate(); err != nil {
 		panic(err)
@@ -247,7 +247,6 @@ func (self *JobScheduleCreate) Parse(args [] string) (_ CommandExec, err error) 
 }
 // JobScheduleCreate- implement CommandExec
 func (self *JobScheduleCreate) Execute(runtime *Runtime) (interface{}, error) {
-	logrus.Debugf("JobScheduleCreate.Execute\n")
 	return runtime.client.JobScheduleCreate(string(self.JobId), &self.Schedule)
 }
 
@@ -262,7 +261,7 @@ func (self *JobSchedUpdate) Usage(writer io.Writer) {
 }
 
 func (self *JobSchedUpdate) Parse(args []string) (_ CommandExec, err error) {
-	logrus.Debugf("JobSchedUpdate.Parse args;: %s\n", args)
+	logrus.Debugf("JobSchedUpdate.Parse args: %s", args)
 	flags := flag.NewFlagSet("schedule update", flag.ExitOnError)
 	(*JobSched)(self).FlagSet(flags)
 	defer func() {
@@ -287,7 +286,6 @@ func (self *JobSchedUpdate) Execute(runtime *Runtime) (interface{}, error) {
 
 
 func (self *JobSched) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
-	//flags := self.JobId.FlagSet(name)
 	self.JobId.FlagSet(flags)
 	flags.StringVar(&self.Schedule.ID, "sched-id", "", "Schedule Id")
 	flags.StringVar(&self.Schedule.Cron, "cron", "", "Schedule Cron")
@@ -298,7 +296,6 @@ func (self *JobSched) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
 	return flags
 }
 func (self *JobSched) Validate() error {
-	logrus.Debugf("JobSched.Validate\n")
 	if self.JobId == "" {
 		return errors.New("Missing JobId in JobScheduleCreate")
 	} else if self.Schedule.ID == "" {

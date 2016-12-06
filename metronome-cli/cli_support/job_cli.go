@@ -160,7 +160,7 @@ func (self *JobCreateConfig) makeJob() (*met.Job, error) {
 	} else {
 		newJob.Run().SetDocker(&container).SetCmd(self.cmd)
 	}
-	logrus.Debugf("JobCreateRuntime: %+v\n", self)
+	logrus.Debugf("JobCreateRuntime: %+v", self)
 	return newJob, nil
 
 }
@@ -175,7 +175,7 @@ func (self *JobCreateRuntime) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
 		self.env = make(map[string]string)
 	}
 
-	logrus.Debugf("nvlist: %+v\n", self.env)
+	logrus.Debugf("nvlist: %+v", self.env)
 	flags.StringVar((*string)(&self.JobId), "job-id", "", "Job Id")
 	flags.StringVar(&self.description, "description", "", "Job Description - optional")
 	flags.StringVar((*string)(&self.docker_image), "docker-image", DefaultImage, "Docker Image")
@@ -214,7 +214,7 @@ func (self *JobCreateRuntime) Usage(writer io.Writer) {
 }
 
 func (self *JobCreateRuntime) Parse(args []string) (exec CommandExec, err error) {
-	logrus.Debugf("JobCreateRuntime.Parse %+v\n", args)
+	logrus.Debugf("JobCreateRuntime.Parse %+v", args)
 	flags := flag.NewFlagSet("job create", flag.ExitOnError)
 	self.FlagSet(flags)
 
@@ -240,7 +240,7 @@ func (self *JobCreateRuntime) Parse(args []string) (exec CommandExec, err error)
 }
 
 func (self *JobCreateRuntime) Execute(runtime *Runtime) (interface{}, error) {
-	logrus.Debugf("JobCreateRuntime.Execute %+v\n", runtime)
+	logrus.Debugf("JobCreateRuntime.Execute %+v", runtime)
 	return runtime.client.CreateJob(self.job)
 }
 

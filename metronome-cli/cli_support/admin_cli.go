@@ -30,7 +30,7 @@ func (self *Ping) Usage(writer io.Writer) {
 }
 
 func (self *Ping) Parse(args []string) (CommandExec, error) {
-	logrus.Debugf("Ping.Parse: %+v\n", args)
+	logrus.Debugf("Ping.Parse: %+v", args)
 	return self, nil
 }
 func (self *Ping) Execute(runtime *Runtime) (interface{}, error) {

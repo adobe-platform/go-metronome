@@ -279,7 +279,7 @@ Left to the reader
 
 - Make dc/os cli use the proxy and login.
 ```
-http_proxy=localhost:8123  bin/exec dcos auth login
+http_proxy=localhost:8123  dcos auth login
 
 Please go to the following link in your browser:
 
@@ -293,38 +293,29 @@ Login successful!
 Note:>  Use firefox to get your token - which must also use the SOCKS 5 proxy.   `/Applications/Firefox.app/Contents/MacOS/firefox-bin -profilemanager` 
 
 
-- Use the token to get `/v1/jobs` from the DC/OS' metronome
+- Now the token with metronome-cli 
+
+  - To ping
 ```
-http_proxy=localhost:8123 http GET $(bin/exec dcos config show core.dcos_url)/service/metronome/v1/jobs Authorization:token=$(bin/exec dcos config show core.dcos_acs_token)
+HTTP_PROXY=localhost:8123  ./go-metronome-cli-linux-amd64 --debug --metronome-url "$( dcos config show core.dcos_url)/service/metronome" --authorization "$( dcos config show core.dcos_acs_token)" ping
 
-HTTP/1.1 200 OK
-Connection: keep-alive
-Content-Length: 1210
-Content-Type: application/json
-Date: Tue, 06 Dec 2016 04:42:13 GMT
-Server: openresty/1.9.15.1
-
-[
-    {
-        "description": "Installs VAMP and dependencies", 
-        "id": "install-vamp", 
-        "labels": {}, 
-        "run": {
-            "artifacts": [
-                {
-                    "cache": true, 
-                    "executable": true, 
-                    "extract": false, 
-                    "uri": "https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64"
-                }, 
--- snip --
+INFO[0000] result "pong"
 ```
-
-- Now use `metronome-cli`
+  - To get metrics
+```
+HTTP_PROXY=localhost:8123 ~/go/src/github.com/adobe-platform/go-metronome/go-metronome-cli-linux-amd64  --metronome-url "$( dcos config show core.dcos_url)/service/metronome" --authorization "$( dcos config show core.dcos_acs_token)" metrics
+INFO[0000] result {"version":"3.0.0","gauges":{"jvm.buffers.direct.capacity":{"value":185715},"jvm.buffers.direct.count":{"value":15},"jvm.buffers.direct.used":{"value":185716},"jvm.buffers.mapped.capacity":{"value":0},"jvm.buffers.mapped.count":{"value":0},"jvm.buffers.mapped.used":{"value":0},"jvm.gc.PS-MarkSweep.count":{"value":3},"jvm.gc.PS-MarkSweep.time":{"value":427},"jvm.gc.PS-Scavenge.count":{"value":475},"jvm.gc.PS-Scavenge.time":{"value":1189},"jvm.memory.heap.committed":{"value":174063616},"jvm.memory.heap.init":{"value":123731968},"jvm.memory.heap.max":{"value":1744830464},"jvm.memory.heap.usage":{"value":0.032752701869377725},"jvm.memory.heap.used":{"value":57147912},"jvm.memory.non-heap.committed":{"value":101007360},"jvm.memory.non-heap.init":{"value":2555904},"jvm.memory.non-heap.max":{"value":-1},"jvm.memory.non-heap.usage":{"value":-9.9773352E7},"jvm.memory.non-heap.used":{"value":99773352},"jvm.memory.pools.Code-Cache.committed":{"value":22282240},"jvm.memory.pools.Code-Cache.init":{"value":2555904},"jvm.memory.pools.Code-Cache.max":{"value":251658240},"jvm.memory.pools.Code-Cache.usage":{"value":0.08743769327799479},"jvm.memory.pools.Code-Cache.used":{"value":22004416},"jvm.memory.pools.Compressed-Class-Space.committed":{"value":9871360},
+--snip -- 
+```
+  - To get job list
 
 ```
-http_proxy=localhost:8123 /usr/local/bin/go-metronome-cli-linux-amd64
+HTTP_PROXY=localhost:8123 ~/go/src/github.com/adobe-platform/go-metronome/go-metronome-cli-linux-amd64  --metronome-url "$( dcos config show core.dcos_url)/service/metronome" --authorization "$( dcos config show core.dcos_acs_token)" job ls
+
+
+INFO[0000] result [{"description":"Installs VAMP and dependencies","id":"install-vamp","labels":{"location":"","owner":""},"run":{"artifacts":[{"uri":"https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64","executable":true,"extract":false,"cache":true},{"uri":"https://gist.githubusercontent.com/mhausenblas/bb967625088902874d631eaa502573cb/raw/4829525ab7700645166f7c47843cb351e3d2a807/install-vamp-09.sh","executable":true,"extract":false,"cache":false},{"uri":"https://gist.githubusercontent.com/mhausenblas/bb967625088902874d631eaa502573cb/raw/7e738db72693716a246c29abd320d67c5a4ec74b/vamp09-es.json","executable":false,"extract":false,"cache":false},{"uri":"https://gist.githubusercontent.com/mhausenblas/bb967625088902874d631eaa502573cb/raw/7e738db72693716a246c29abd320d67c5a4ec74b/vamp09.json","executable":true,"extract":false,"cache":true},{"uri":"https://gist.githubusercontent.com/mhausenblas/bb967625088902874d631eaa502573cb/raw/7e738db72693716a246c29abd320d67c5a4ec74b/vamp09-gateway.json","executable":false,"extract":false,"cache":false}],"cmd":"mv jq-linux64 jq \u0026\u0026 ./install-vamp-09.sh","cpus":0.5,"mem":100,"disk":0,"maxLaunchDelay":3600,"placement":{"constraints":[]},"restart":{"activeDeadlineSeconds":0,"policy":"NEVER"},"volumes":[]}}]
 ```
+
 
 # Detailed CLI Usage
 

@@ -43,7 +43,7 @@ func (self *RunsTopLevel) Parse(args [] string) (exec CommandExec, err error) {
 	if len(args) == 0 {
 		panic(errors.New("sub command required"))
 	}
-	logrus.Debugf("RunTopLevel args: %+v\n", args)
+	logrus.Debugf("RunTopLevel args: %+v", args)
 	self.subcommand = args[0]
 	switch self.subcommand {
 	case "ls":
@@ -64,7 +64,7 @@ func (self *RunsTopLevel) Parse(args [] string) (exec CommandExec, err error) {
 	if len(args) > 1 {
 		subcommandArgs = args[1:]
 	}
-	logrus.Debugf("run %s args: %+v\n", self.subcommand, subcommandArgs)
+	logrus.Debugf("run %s args: %+v", self.subcommand, subcommandArgs)
 	if exec, err = self.task.Parse(subcommandArgs); err != nil {
 		panic(err)
 	} else {

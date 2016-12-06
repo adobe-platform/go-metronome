@@ -5,13 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"strings"
 	"time"
 	"io/ioutil"
 	"github.com/Sirupsen/logrus"
 	"bytes"
-	)
+
+	"path"
+)
 
 // Constants to represent HTTP verbs
 const (
@@ -84,7 +87,7 @@ type Client struct {
 // NewClient returns a new  client, initialzed with the provided config
 func NewClient(config Config) (Metronome, error) {
 	client := new(Client)
-	logrus.Debugf("NewClient started\n")
+	logrus.Debugf("NewClient started %+v", config)
 	var err error
 	client.url, err = url.Parse(config.URL)
 	if err != nil {
@@ -142,7 +145,7 @@ func (client *Client) apiCall(method string, uri string, queryParams map[string]
 	if err != nil {
 		return 0, err
 	}
-	logrus.Debugf("%s result status: %d", uri, response.Status)
+	logrus.Debugf("%s result status: %+v", uri, response.Status)
 	logrus.Debugf("Headers: %+v", response.Header)
 	if response.ContentLength > 0 {
 		ct := response.Header["Content-Type"]
@@ -166,7 +169,7 @@ func (client *Client) apiCall(method string, uri string, queryParams map[string]
 						fmt.Fprintf(bb, string(msg))
 						return status, errors.New(string(bb.Bytes()))
 					}
-					logrus.Debugf("method %s uri: %s status: %d result: %+v", method, uri, status, result)
+					logrus.Debugf("method %s uri: %s status: %d result type: %T", method, uri, status, result)
 				}
 			} else {
 				return status, err
@@ -191,20 +194,28 @@ func (client *Client) apiCall(method string, uri string, queryParams map[string]
 	}
 	return status, nil
 }
-func (client *Client) buildURL(path string, queryParams map[string]string) {
+func (client *Client) buildURL(req_path string, queryParams map[string]string) {
 	query := client.url.Query()
+	master,_ := url.Parse(client.config.URL)
+	prefix :=master.Path
 	for k, v := range queryParams {
 		query.Add(k, v)
 	}
 	client.url.RawQuery = query.Encode()
 
-	client.url.Path = path
+	client.url.Path = path.Join(prefix, req_path)
 }
 
-// TODO: think about pulling out a Request struct/object/thing
+
 func (client *Client) applyRequestHeaders(request *http.Request) {
 	request.Header.Add("Content-Type", "application/json")
 	request.Header.Add("Accept", "application/json")
+	if client.config.User != "" &&  client.config.Pw != "" {
+		request.SetBasicAuth(client.config.User,client.config.Pw)
+	}
+	if client.config.AuthToken != "" {
+		request.Header.Add("Authorization", client.config.AuthToken)
+	}
 }
 
 func (client *Client) newRequest(method string, body string) (*http.Request, error) {
@@ -215,6 +226,11 @@ func (client *Client) newRequest(method string, body string) (*http.Request, err
 	}
 
 	client.applyRequestHeaders(request)
+	if client.config.Debug {
+		if dump, err := httputil.DumpRequest(request, true); err != nil {
+			logrus.Infof(string(dump))
+		}
+	}
 	return request, nil
 }
 

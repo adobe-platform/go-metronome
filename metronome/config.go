@@ -8,6 +8,11 @@ type Config struct {
 	Debug bool
 	/* the timeout for requests */
 	RequestTimeout int
+
+	AuthToken string
+	User string
+	Pw string
+
 }
 
 // NewDefaultConfig returns a default configuration.
