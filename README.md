@@ -84,6 +84,22 @@ Simple client
 ```
 
 # CLI
+The following examples assume you've started metronome infrastructure as:
+```
+DOCKER_IP=10.0.2.15 docker-compose -f docker-compose.yml up
+```
+
+Note:> DOCKER_IP should be the ip address of your `eth0` network interface
+
+Using the docker-compose.yml file, you should see the following instances runnings.
+```
+f4c7f8ac85df        f4tq/metronome:0.9.1.4336d5b15cdd19-mesos-1.0.1   "/bin/sh -c '$APP_DIR"   13 hours ago        Up 13 hours                             mesoscompose_metronome_1
+47548cc24717        mesosphere/mesos-master:1.0.1-2.0.93.ubuntu1404   "mesos-master --regis"   13 hours ago        Up 13 hours                             mesoscompose_master_1
+a50c32104523        mesosphere/marathon:v1.3.0                        "./bin/start"            13 hours ago        Up 13 hours                             mesoscompose_marathon_1
+9783a5e883f3        mesosphere/mesos-slave:1.0.1-2.0.93.ubuntu1404    "mesos-slave"            13 hours ago        Up 13 hours                             mesoscompose_slave-one_1
+1bf0a4f476e0        bobrik/zookeeper                                  "/run.sh"                13 hours ago        Up 13 hours                             mesoscompose_zk_1
+```
+
 
 ## Create a job
 ```
