@@ -22,10 +22,6 @@ docker-compile: dev
 	@test -f ~/.bash_history-metronome || touch ~/.bash_history-metronome
 	docker run -i --rm --net host -v ~/.bash_history-metronome:/root/.bash_history -v `pwd`:/go/src/github.com/adobe-platform/go-metronome -w /go/src/github.com/adobe-platform/metronome -e version=0.0.1  -e CGO_ENABLED=0 -e GOOS=linux -t adobe-platform/go-metronome:dev make compile
 
-compile:
-	@echo "Compiling go-metronome ..."
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build ./...
-
 
 build-container: compile
 	@echo "Building go-metronome container ..."
@@ -55,7 +51,7 @@ run-dev: dev_container
 #       save bash history in-between runs...
 	@if [ ! -f ~/.bash_history-go-metronome ]; then touch ~/.bash_history-go-metronome; fi
 #       mount the current directory into the dev build
-	docker run -i --rm --net host -v ~/.bash_history-go-metronome:/root/.bash_history -v `pwd`:/go/src/github.com/adobe-platform/go-metronome -w /go/src/github.com/adobe-platform/go-metronome -t adobe-platform/go-metronome:1.7.3-dev bash
+	docker run -i --rm --net host -e HISTSIZE=100000 -v ~/.bash_history-go-metronome:/root/.bash_history -v `pwd`:/go/src/github.com/adobe-platform/go-metronome -w /go/src/github.com/adobe-platform/go-metronome -t adobe-platform/go-metronome:1.7.3-dev bash
 
 
 # build the docker dev container if it doesn't exists
@@ -73,18 +69,13 @@ dev_container:
 build-darwin-amd64: go-metronome-darwin-amd64
 
 go-metronome-darwin-amd64: 
-	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 \
-		go build \
-			-ldflags "-X main.version=`git rev-parse HEAD`" \
-			-o go-metronome-darwin-amd64 ./...
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.version=`git rev-parse HEAD`" -o go-metronome-cli-darwin-amd64 ./metronome-cli
 
 build-linux-amd64: go-metronome-linux-amd64
 
-go-metronome-linux-amd64: 
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-		go build \
-		-ldflags "-X main.version=`git rev-parse HEAD`" \
-		-o go-metronome-linux-amd64 ./...
+go-metronome-linux-amd64:
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=`git rev-parse HEAD`" -o go-metronome-cli-linux-amd64 ./metronome-cli
+
 
 compile:           # cross compiles go-metronome producing darwin and linux ready binaries
 compile: dev_container
@@ -98,3 +89,5 @@ compile: dev_container
 	else \
 		make build-linux-amd64 build-darwin-amd64 ; \
 	fi
+run:
+	@if [ ! -z "$(http_proxy)"]; then export PROXY="-e http_proxy=$http_proxy" ; fi ; echo docker run -i --rm $$PROXY --net host -t adobe-platform/go-metronome:`git rev-parse HEAD` /usr/local/bin/go-metronome-cli-linux-amd64

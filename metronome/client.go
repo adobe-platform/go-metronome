@@ -91,8 +91,11 @@ func NewClient(config Config) (Metronome, error) {
 		return nil, err
 	}
 	client.config = config
+	var PTransport http.RoundTripper = &http.Transport{Proxy: http.ProxyFromEnvironment}
+
 	client.http = &http.Client{
 		Timeout: (time.Duration(config.RequestTimeout) * time.Second),
+		Transport: PTransport,
 	}
 	// Verify you can reach metronome
 	_, err = client.Jobs()

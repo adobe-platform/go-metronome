@@ -5,13 +5,15 @@ ADD . $GOPATH/src/github.com/adobe-platform/go-metronome
 WORKDIR $GOPATH/src/github.com/adobe-platform/go-metronome
 
 
-RUN apk add --no-cache \
+RUN apk add --virtual .pbbuild --no-cache \
       bash \
       build-base \
       curl \
       make \
       git \
-    && make install-deps install 
+    && make install-deps compile \
+    && cp  go-metronome-cli-linux-amd64 /usr/local/bin
+
 
  
 CMD /usr/local/bin/skopos 
