@@ -128,13 +128,18 @@ func (client *Client) apiPut(uri string, queryParams map[string]string, putData 
 }
 
 func (client *Client) apiPost(uri string, queryParams map[string]string, postData interface{}, result interface{}) (status int, err error) {
-	postDataString, err := json.Marshal(postData)
+	//postDataString, err := json.Marshal(postData)
+	postDataString := new(bytes.Buffer)
+	enc := json.NewEncoder(postDataString)
+	enc.SetEscapeHTML(false)
+	err = enc.Encode(postData)
 
+	//fmt.Printf("post data:%s\n",postDataString.String())
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
 
-	return client.apiCall(HTTPPost, uri, queryParams, string(postDataString), result)
+	return client.apiCall(HTTPPost, uri, queryParams, postDataString.String(), result)
 
 }
 
