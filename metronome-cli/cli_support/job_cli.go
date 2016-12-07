@@ -160,7 +160,7 @@ func (self *JobCreateConfig) makeJob() (*met.Job, error) {
 	if err != nil {
 		return nil, err
 
-	} else if container != nil{
+	} else if container != nil {
 		newJob.Run().SetDocker(container).SetCmd(self.cmd)
 	}
 	logrus.Debugf("JobCreateRuntime: %+v", self)
@@ -170,7 +170,8 @@ func (self *JobCreateConfig) makeJob() (*met.Job, error) {
 
 type JobCreateRuntime struct {
 	JobCreateConfig
-	job *met.Job
+	job           *met.Job
+	disableRunNow bool
 }
 
 func (self *JobCreateRuntime) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
@@ -189,7 +190,7 @@ func (self *JobCreateRuntime) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
 	flags.IntVar(&self.active_deadline_seconds, "restart-active-deadline-seconds", 0, "If the job fails, how long should we try to restart the job. If no value is set, this means forever.")
 	flags.Var(&self.constraints, "constraint", "Add Constraint used to construct Job->Run->[]Constraint")
 	flags.Var(&self.volumes, "volume", "/host:/container:{RO|RW} . Adds Volume passed to metrononome->Job->Run->Volumes. You can call more than once")
-	flags.Var(&self.artifacts,"artifact",`uri=xxx  executable={true|false}  cache={true|false}\n extract={true|false} and executable={true|false.
+	flags.Var(&self.artifacts, "artifact", `uri=xxx  executable={true|false}  cache={true|false} extract={true|false} executable={true|false}
 	                                cache,extract,executable are optional.  uri is required`)
 	flags.Var(&self.args, "arg", "Adds Arg metrononome->Job->Run->Args. You can call more than once")
 	flags.Var(&self.env, "env", "VAR=VAL . Adds Volume passed on to Job.Run.[]Volumes.  You can call more than once")
@@ -197,7 +198,9 @@ func (self *JobCreateRuntime) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
 	flags.StringVar(&self.user, "user", "root", "user to run as")
 	flags.StringVar(&self.cmd, "cmd", "", "Command to run")
 	flags.IntVar(&self.maxLaunchDelay, "max-launch-delay", 900, "Max Launch delay.  minimum 1")
-	flags.BoolVar(&self.runNow, "run-now", false, "Run this job now, otherwise it is created as unscheduled")
+	if !self.disableRunNow {
+		flags.BoolVar(&self.runNow, "run-now", false, "Run this job now, otherwise it is created as unscheduled")
+	}
 	return flags
 }
 
@@ -216,6 +219,10 @@ func (self *JobCreateRuntime) Usage(writer io.Writer) {
 	self.FlagSet(flags)
 	flags.SetOutput(writer)
 	flags.PrintDefaults()
+}
+
+type JobRunNow struct {
+	job *met.Job
 }
 
 func (self *JobCreateRuntime) Parse(args []string) (exec CommandExec, err error) {
@@ -240,7 +247,20 @@ func (self *JobCreateRuntime) Parse(args []string) (exec CommandExec, err error)
 	if self.job, err = self.JobCreateConfig.makeJob(); err != nil {
 		return nil, err
 	} else {
-		return self, nil
+		if self.runNow {
+			return &JobRunNow{job:self.job}, nil
+		} else {
+			return self, nil
+		}
+	}
+}
+func (self *JobRunNow) Execute(runtime *Runtime) (interface{}, error) {
+	logrus.Debugf("JobCreateRuntime.Execute %+v", runtime)
+	if _, err := runtime.client.CreateJob(self.job); err != nil {
+		return nil, err
+
+	} else {
+		return runtime.client.RunStartJob(self.job.ID_)
 	}
 }
 
@@ -338,7 +358,9 @@ func (self *JobList) Execute(runtime *Runtime) (interface{}, error) {
 type JobUpdate JobCreateRuntime
 
 func (self *JobUpdate) Usage(writer io.Writer) {
+	self.disableRunNow = true
 	flags := flag.NewFlagSet("job update", flag.ExitOnError)
+	// must cast to JobRuntime or go chooses JobId.Flagset...
 	(*JobCreateRuntime)(self).FlagSet(flags)
 	flags.SetOutput(writer)
 	flags.PrintDefaults()
@@ -346,6 +368,7 @@ func (self *JobUpdate) Usage(writer io.Writer) {
 
 // JobUpdate - implement CommandParse
 func (self *JobUpdate) Parse(args [] string) (_ CommandExec, err error) {
+	self.disableRunNow = true
 	flags := flag.NewFlagSet("job update", flag.ExitOnError)
 	(*JobCreateRuntime)(self).FlagSet(flags)
 	defer func() {

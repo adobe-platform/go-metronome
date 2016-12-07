@@ -8,8 +8,8 @@ import (
 	"errors"
 	"encoding/json"
 	. "github.com/adobe-platform/go-metronome/metronome-cli/cli_support"
-
 )
+
 type CommandMap map[string]CommandParse
 
 var commands CommandMap
@@ -93,8 +93,25 @@ func main() {
 			if result, err2 := executor.Execute(runtime); err2 != nil {
 				logrus.Fatalf("action %s execution failed because %+v", action, err2)
 			} else {
-				if bb, err7 := json.Marshal(result); err7 == nil {
-					logrus.Infof("result %s\n", (string(bb)))
+				logrus.Debugf("Result type: %T", result)
+
+				switch result.(type){
+				case json.RawMessage:
+					var f interface{}
+					by := result.(json.RawMessage)
+					if err := json.Unmarshal(by, &f); err != nil {
+						logrus.Infof(string(by))
+					} else {
+						if b2, err2 := json.Marshal(f); err2 != nil {
+							logrus.Infof(string(by))
+						} else {
+							logrus.Infof(string(b2))
+						}
+					}
+				default:
+					if bb, err7 := json.Marshal(result); err7 == nil {
+						logrus.Infof("result %s\n", (string(bb)))
+					}
 				}
 			}
 		}

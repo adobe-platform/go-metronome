@@ -32,7 +32,7 @@ func (i *RunArgs) String() string {
 }
 // The second method is Set(value string) error
 func (i *RunArgs) Set(value string) error {
-	logrus.Debugf("Args.Set %s\n", value)
+	logrus.Debugf("Args.Set %s", value)
 	*i = append(*i, value)
 	return nil
 }
@@ -44,9 +44,9 @@ func (i *LabelList) String() string {
 }
 // The second method is Set(value string) error
 func (lb *LabelList) Set(value string) error {
-	logrus.Debugf("LabelList %s\n", value)
+	logrus.Debugf("LabelList %s", value)
 	v := strings.Split(value, ";")
-	logrus.Debugf("LabelList %+v\n", v)
+	logrus.Debugf("LabelList %+v", v)
 	//lb := LabelList{}
 	for _, ii := range v {
 		nv := strings.Split(ii, "=")
@@ -72,12 +72,12 @@ func (i *NvList) String() string {
 }
 // The second method is Set(value string) error
 func (self *NvList) Set(value string) error {
-	logrus.Debugf("NvList %+v %s\n", self, value)
+	logrus.Debugf("NvList %+v %s", self, value)
 	nv := strings.Split(value, "=")
 	if len(nv) != 2 {
 		return errors.New("Environment vars should be NAME=VALUE")
 	}
-	logrus.Debugf("NvList %+v\n", nv)
+	logrus.Debugf("NvList %+v", nv)
 	vv := (*self)
 	vv[nv[0]] = nv[1]
 	return nil
@@ -129,9 +129,9 @@ func (i *ArtifactList) Set(value string) (err error) {
 	var arty met.Artifact
 
 	for _, pairs := range strings.Split(strings.TrimSpace(value), " ") {
-		logrus.Debugf("pairs : %+v\n", pairs)
+		logrus.Debugf("pairs : %+v", pairs)
 		kv := strings.SplitN(strings.TrimSpace(pairs), "=", 2)
-		logrus.Debugf("kv=%+v\n", kv)
+		logrus.Debugf("kv=%+v", kv)
 		switch strings.TrimSpace(kv[0]){
 		case "url","uri":
 			if ur, err := url.Parse(strings.TrimSpace(kv[1])); err != nil {
