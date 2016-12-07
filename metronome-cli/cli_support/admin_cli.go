@@ -34,7 +34,6 @@ func (self *Ping) Parse(args []string) (CommandExec, error) {
 	return self, nil
 }
 func (self *Ping) Execute(runtime *Runtime) (interface{}, error) {
-	logrus.Debugf("Ping.execute\n")
 	if msg, err := runtime.client.Ping(); err != nil {
 		return nil, err
 	} else {

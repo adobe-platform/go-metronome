@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"errors"
+	"net/url"
+	"strconv"
 )
 
 //
@@ -123,6 +125,41 @@ func (i *ArtifactList) String() string {
 	return fmt.Sprintf("%s", *i)
 }
 // The second method is Set(value string) error
-func (i *ArtifactList) Set(value string) error {
+func (i *ArtifactList) Set(value string) (err error) {
+	var arty met.Artifact
+
+	for _, pairs := range strings.Split(strings.TrimSpace(value), " ") {
+		logrus.Debugf("pairs : %+v\n", pairs)
+		kv := strings.SplitN(strings.TrimSpace(pairs), "=", 2)
+		logrus.Debugf("kv=%+v\n", kv)
+		switch strings.TrimSpace(kv[0]){
+		case "url","uri":
+			if ur, err := url.Parse(strings.TrimSpace(kv[1])); err != nil {
+				return err
+			} else {
+				arty.Uri_ = ur.String()
+			}
+		case "extract":
+			if arty.Extract_,err  = strconv.ParseBool(kv[1]); err != nil {
+				return err
+			}
+		case "executable":
+			if arty.Executable_,err = strconv.ParseBool(kv[1]); err != nil{
+				return err
+			}
+		case "cache":
+			if arty.Cache_,err = strconv.ParseBool(kv[1]); err != nil {
+				return err
+			}
+		default:
+			return errors.New(fmt.Sprintf("Unknown artifact '%s", kv[0]))
+		}
+
+	}
+	if arty.Uri_ == "" {
+		return errors.New("You must supply 'uri' for artifact")
+	}
+	*i = append(*i, arty)
+
 	return nil
 }

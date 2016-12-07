@@ -178,16 +178,11 @@ func (client *Client) Metrics() (interface{}, error) {
 
 //  GET /v1/ping
 func (client *Client) Ping() (*string, error) {
-	//var msg string= "foo"
 	val:= new(string)
 	msg:=(interface{})(val)
 	if _,err := client.apiGet(MetronomeAPIPing, nil, msg); err != nil {
-
 		return nil, err
 	} else {
-//		var result string = (reflect.ValueOf(msg))
-
-		fmt.Printf ("ping result: '%s'\n", *msg.(*string) )
 		// use Sprintf to reflect the value out.  painful
 		retval := fmt.Sprintf("%s",*msg.(*string))
 		return &retval, err

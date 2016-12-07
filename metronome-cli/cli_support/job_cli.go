@@ -109,8 +109,11 @@ type JobCreateConfig struct {
 }
 
 func (self *JobCreateConfig) makeJob() (*met.Job, error) {
-	container := met.Docker{
-		Image_: self.docker_image,
+	var container *met.Docker
+	if self.docker_image != "" {
+		container = &met.Docker{
+			Image_: self.docker_image,
+		}
 	}
 	run, err := met.NewRun(self.cpus, self.disk, self.mem)
 
@@ -157,8 +160,8 @@ func (self *JobCreateConfig) makeJob() (*met.Job, error) {
 	if err != nil {
 		return nil, err
 
-	} else {
-		newJob.Run().SetDocker(&container).SetCmd(self.cmd)
+	} else if container != nil{
+		newJob.Run().SetDocker(container).SetCmd(self.cmd)
 	}
 	logrus.Debugf("JobCreateRuntime: %+v", self)
 	return newJob, nil
@@ -178,7 +181,7 @@ func (self *JobCreateRuntime) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
 	logrus.Debugf("nvlist: %+v", self.env)
 	flags.StringVar((*string)(&self.JobId), "job-id", "", "Job Id")
 	flags.StringVar(&self.description, "description", "", "Job Description - optional")
-	flags.StringVar((*string)(&self.docker_image), "docker-image", DefaultImage, "Docker Image")
+	flags.StringVar((*string)(&self.docker_image), "docker-image", "", "Docker Image")
 	flags.Float64Var(&self.cpus, "cpus", DefaultCPUs, "cpus")
 	flags.IntVar(&self.mem, "memory", DefaultMemory, "memory")
 	flags.IntVar(&self.disk, "disk", DefaultDisk, "disk")
@@ -186,8 +189,10 @@ func (self *JobCreateRuntime) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
 	flags.IntVar(&self.active_deadline_seconds, "restart-active-deadline-seconds", 0, "If the job fails, how long should we try to restart the job. If no value is set, this means forever.")
 	flags.Var(&self.constraints, "constraint", "Add Constraint used to construct Job->Run->[]Constraint")
 	flags.Var(&self.volumes, "volume", "/host:/container:{RO|RW} . Adds Volume passed to metrononome->Job->Run->Volumes. You can call more than once")
+	flags.Var(&self.artifacts,"artifact",`uri=xxx  executable={true|false}  cache={true|false}\n extract={true|false} and executable={true|false.
+	                                cache,extract,executable are optional.  uri is required`)
 	flags.Var(&self.args, "arg", "Adds Arg metrononome->Job->Run->Args. You can call more than once")
-	flags.Var(&self.env, "env", "VAR=VAL . Adds Volume passed to metrononome->Job->Run->Volumes.  You can call more than once")
+	flags.Var(&self.env, "env", "VAR=VAL . Adds Volume passed on to Job.Run.[]Volumes.  You can call more than once")
 	flags.Var(&self.labels, "label", "Location=xxx; Owner=yyy")
 	flags.StringVar(&self.user, "user", "root", "user to run as")
 	flags.StringVar(&self.cmd, "cmd", "", "Command to run")
