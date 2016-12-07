@@ -324,6 +324,18 @@ HTTP_PROXY=localhost:8123 ~/go/src/github.com/adobe-platform/go-metronome/metron
 INFO[0000] result [{"description":"Installs VAMP and dependencies","id":"install-vamp","labels":{"location":"","owner":""},"run":{"artifacts":[{"uri":"https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64","executable":true,"extract":false,"cache":true},{"uri":"https://gist.githubusercontent.com/mhausenblas/bb967625088902874d631eaa502573cb/raw/4829525ab7700645166f7c47843cb351e3d2a807/install-vamp-09.sh","executable":true,"extract":false,"cache":false},{"uri":"https://gist.githubusercontent.com/mhausenblas/bb967625088902874d631eaa502573cb/raw/7e738db72693716a246c29abd320d67c5a4ec74b/vamp09-es.json","executable":false,"extract":false,"cache":false},{"uri":"https://gist.githubusercontent.com/mhausenblas/bb967625088902874d631eaa502573cb/raw/7e738db72693716a246c29abd320d67c5a4ec74b/vamp09.json","executable":true,"extract":false,"cache":true},{"uri":"https://gist.githubusercontent.com/mhausenblas/bb967625088902874d631eaa502573cb/raw/7e738db72693716a246c29abd320d67c5a4ec74b/vamp09-gateway.json","executable":false,"extract":false,"cache":false}],"cmd":"mv jq-linux64 jq \u0026\u0026 ./install-vamp-09.sh","cpus":0.5,"mem":100,"disk":0,"maxLaunchDelay":3600,"placement":{"constraints":[]},"restart":{"activeDeadlineSeconds":0,"policy":"NEVER"},"volumes":[]}}]
 ```
 
+# Install VAMP
+
+- On docker-compose.yml (make sure you have 2 slaves )
+```
+./metronome-cli-linux-amd64 job create -job-id "install-vamp" -description "Install Vamp"  -restart-policy NEVER -restart-active-deadline-seconds 0 -artifact 'uri=https://gist.githubusercontent.com/mhausenblas/bb967625088902874d631eaa502573cb/raw/4829525ab7700645166f7c47843cb351e3d2a807/install-vamp-09.sh executable=true' --artifact 'uri=https://gist.githubusercontent.com/mhausenblas/bb967625088902874d631eaa502573cb/raw/7e738db72693716a246c29abd320d67c5a4ec74b/vamp09-es.json' --artifact 'uri=https://gist.githubusercontent.com/mhausenblas/bb967625088902874d631eaa502573cb/raw/7e738db72693716a246c29abd320d67c5a4ec74b/vamp09.json executable=true extract=false cache=true' --artifact 'uri=https://gist.githubusercontent.com/mhausenblas/bb967625088902874d631eaa502573cb/raw/7e738db72693716a246c29abd320d67c5a4ec74b/vamp09-gateway.json executable=false extract=false cache=false' -cmd 'mv jq-linux64 jq && ./install-vamp-09.sh'
+
+```
+- On ethos cluster
+
+> Make sure you login to dcos `dcos login` and get a token.  You don't need this if you turn off dcos' oauth.
+
+HTTP_PROXY=localhost:8123 ./metronome-cli-linux-amd64 --metronome-url "$( dcos config show core.dcos_url)/service/metronome" --authorization "$( dcos config show core.dcos_acs_token)" job create -job-id "install-vamp" -description "Install Vamp"  -restart-policy NEVER -restart-active-deadline-seconds 0 -artifact 'uri=https://gist.githubusercontent.com/mhausenblas/bb967625088902874d631eaa502573cb/raw/4829525ab7700645166f7c47843cb351e3d2a807/install-vamp-09.sh executable=true' --artifact 'uri=https://gist.githubusercontent.com/mhausenblas/bb967625088902874d631eaa502573cb/raw/7e738db72693716a246c29abd320d67c5a4ec74b/vamp09-es.json' --artifact 'uri=https://gist.githubusercontent.com/mhausenblas/bb967625088902874d631eaa502573cb/raw/7e738db72693716a246c29abd320d67c5a4ec74b/vamp09.json executable=true extract=false cache=true' --artifact 'uri=https://gist.githubusercontent.com/mhausenblas/bb967625088902874d631eaa502573cb/raw/7e738db72693716a246c29abd320d67c5a4ec74b/vamp09-gateway.json executable=false extract=false cache=false' -cmd 'mv jq-linux64 jq && ./install-vamp-09.sh'
 
 # Detailed CLI Usage
 
