@@ -12,9 +12,8 @@ RUN apk add --virtual .pbbuild --no-cache \
       make \
       git \
     && make install-deps compile \
-    && cp  go-metronome-cli-linux-amd64 /usr/local/bin
-
-
+    && cp  metronome-cli-linux-amd64 /usr/local/bin
+    && chmod +x /usr/local/bin/metronome-cli-linux-amd64  
  
-CMD /usr/local/bin/skopos 
+CMD /usr/local/bin/metronome-cli-linux-amd64 
 

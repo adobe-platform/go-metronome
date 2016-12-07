@@ -69,12 +69,12 @@ dev_container:
 build-darwin-amd64: go-metronome-darwin-amd64
 
 go-metronome-darwin-amd64: 
-	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.version=`git rev-parse HEAD`" -o go-metronome-cli-darwin-amd64 ./metronome-cli
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.version=`git rev-parse HEAD`" -o metronome-cli-darwin-amd64 ./metronome-cli
 
 build-linux-amd64: go-metronome-linux-amd64
 
 go-metronome-linux-amd64:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=`git rev-parse HEAD`" -o go-metronome-cli-linux-amd64 ./metronome-cli
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=`git rev-parse HEAD`" -o metronome-cli-linux-amd64 ./metronome-cli
 
 
 compile:           # cross compiles go-metronome producing darwin and linux ready binaries

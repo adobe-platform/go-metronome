@@ -39,7 +39,7 @@ make run-dev
 make compile
 ```
 
-> Yielding `go-metronome/go-metronome-cli-linux-amd64` and `go-metronome/go-metronome-cli-darwin-amd64`
+> Yielding `go-metronome/metronome-cli-linux-amd64` and `go-metronome/metronome-cli-darwin-amd64`
 
 # V1 Interface
 
@@ -305,20 +305,20 @@ Login successful!
 
   - To ping
 ```
-HTTP_PROXY=localhost:8123  ./go-metronome-cli-linux-amd64 --debug --metronome-url "$( dcos config show core.dcos_url)/service/metronome" --authorization "$( dcos config show core.dcos_acs_token)" ping
+HTTP_PROXY=localhost:8123  ./metronome-cli-linux-amd64 --debug --metronome-url "$( dcos config show core.dcos_url)/service/metronome" --authorization "$( dcos config show core.dcos_acs_token)" ping
 
 INFO[0000] result "pong"
 ```
   - To get metrics
 ```
-HTTP_PROXY=localhost:8123 ~/go/src/github.com/adobe-platform/go-metronome/go-metronome-cli-linux-amd64  --metronome-url "$( dcos config show core.dcos_url)/service/metronome" --authorization "$( dcos config show core.dcos_acs_token)" metrics
+HTTP_PROXY=localhost:8123 ~/go/src/github.com/adobe-platform/go-metronome/metronome-cli-linux-amd64  --metronome-url "$( dcos config show core.dcos_url)/service/metronome" --authorization "$( dcos config show core.dcos_acs_token)" metrics
 INFO[0000] result {"version":"3.0.0","gauges":{"jvm.buffers.direct.capacity":{"value":185715},"jvm.buffers.direct.count":{"value":15},"jvm.buffers.direct.used":{"value":185716},"jvm.buffers.mapped.capacity":{"value":0},"jvm.buffers.mapped.count":{"value":0},"jvm.buffers.mapped.used":{"value":0},"jvm.gc.PS-MarkSweep.count":{"value":3},"jvm.gc.PS-MarkSweep.time":{"value":427},"jvm.gc.PS-Scavenge.count":{"value":475},"jvm.gc.PS-Scavenge.time":{"value":1189},"jvm.memory.heap.committed":{"value":174063616},"jvm.memory.heap.init":{"value":123731968},"jvm.memory.heap.max":{"value":1744830464},"jvm.memory.heap.usage":{"value":0.032752701869377725},"jvm.memory.heap.used":{"value":57147912},"jvm.memory.non-heap.committed":{"value":101007360},"jvm.memory.non-heap.init":{"value":2555904},"jvm.memory.non-heap.max":{"value":-1},"jvm.memory.non-heap.usage":{"value":-9.9773352E7},"jvm.memory.non-heap.used":{"value":99773352},"jvm.memory.pools.Code-Cache.committed":{"value":22282240},"jvm.memory.pools.Code-Cache.init":{"value":2555904},"jvm.memory.pools.Code-Cache.max":{"value":251658240},"jvm.memory.pools.Code-Cache.usage":{"value":0.08743769327799479},"jvm.memory.pools.Code-Cache.used":{"value":22004416},"jvm.memory.pools.Compressed-Class-Space.committed":{"value":9871360},
 --snip -- 
 ```
   - To get job list
 
 ```
-HTTP_PROXY=localhost:8123 ~/go/src/github.com/adobe-platform/go-metronome/go-metronome-cli-linux-amd64  --metronome-url "$( dcos config show core.dcos_url)/service/metronome" --authorization "$( dcos config show core.dcos_acs_token)" job ls
+HTTP_PROXY=localhost:8123 ~/go/src/github.com/adobe-platform/go-metronome/metronome-cli-linux-amd64  --metronome-url "$( dcos config show core.dcos_url)/service/metronome" --authorization "$( dcos config show core.dcos_acs_token)" job ls
 
 
 INFO[0000] result [{"description":"Installs VAMP and dependencies","id":"install-vamp","labels":{"location":"","owner":""},"run":{"artifacts":[{"uri":"https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64","executable":true,"extract":false,"cache":true},{"uri":"https://gist.githubusercontent.com/mhausenblas/bb967625088902874d631eaa502573cb/raw/4829525ab7700645166f7c47843cb351e3d2a807/install-vamp-09.sh","executable":true,"extract":false,"cache":false},{"uri":"https://gist.githubusercontent.com/mhausenblas/bb967625088902874d631eaa502573cb/raw/7e738db72693716a246c29abd320d67c5a4ec74b/vamp09-es.json","executable":false,"extract":false,"cache":false},{"uri":"https://gist.githubusercontent.com/mhausenblas/bb967625088902874d631eaa502573cb/raw/7e738db72693716a246c29abd320d67c5a4ec74b/vamp09.json","executable":true,"extract":false,"cache":true},{"uri":"https://gist.githubusercontent.com/mhausenblas/bb967625088902874d631eaa502573cb/raw/7e738db72693716a246c29abd320d67c5a4ec74b/vamp09-gateway.json","executable":false,"extract":false,"cache":false}],"cmd":"mv jq-linux64 jq \u0026\u0026 ./install-vamp-09.sh","cpus":0.5,"mem":100,"disk":0,"maxLaunchDelay":3600,"placement":{"constraints":[]},"restart":{"activeDeadlineSeconds":0,"policy":"NEVER"},"volumes":[]}}]
@@ -329,7 +329,7 @@ INFO[0000] result [{"description":"Installs VAMP and dependencies","id":"install
 
 ## No options
 ```
-/usr/local/bin/go-metronome-cli-linux-amd64 <global-options> <action: one of {job|run|schedule|metrics|ping|help}> [<action options>|help ] 
+/usr/local/bin/metronome-cli-linux-amd64 <global-options> <action: one of {job|run|schedule|metrics|ping|help}> [<action options>|help ] 
  For more help, use 
   -debug
         Turn on debug
@@ -338,7 +338,7 @@ INFO[0000] result [{"description":"Installs VAMP and dependencies","id":"install
 ```
 ## job sub menu
 ```
-docker run -i --rm --net host -t adobe-platform/go-metronome:029ef7418691d812dacc4a01ded16598cfbe7ccb /usr/local/bin/go-metronome-cli-linux-amd64 job       
+docker run -i --rm --net host -t adobe-platform/go-metronome:029ef7418691d812dacc4a01ded16598cfbe7ccb /usr/local/bin/metronome-cli-linux-amd64 job       
 FATA[0000] job failed because job subcommand required
 
 job  usage:
@@ -349,7 +349,7 @@ job {create|delete|update|ls|get|schedules|schedule|help}
 ###  `job create`
 
 ```
-docker run -i --rm --net host -t adobe-platform/go-metronome:029ef7418691d812dacc4a01ded16598cfbe7ccb /usr/local/bin/go-metronome-cli-linux-amd64 job create
+docker run -i --rm --net host -t adobe-platform/go-metronome:029ef7418691d812dacc4a01ded16598cfbe7ccb /usr/local/bin/metronome-cli-linux-amd64 job create
 
 job create usage:
   -arg value
@@ -390,7 +390,7 @@ job create usage:
 
 ## schedule submenu
 ```
-docker run -i --rm --net host -t adobe-platform/go-metronome:029ef7418691d812dacc4a01ded16598cfbe7ccb /usr/local/bin/go-metronome-cli-linux-amd64 schedule 
+docker run -i --rm --net host -t adobe-platform/go-metronome:029ef7418691d812dacc4a01ded16598cfbe7ccb /usr/local/bin/metronome-cli-linux-amd64 schedule 
 FATA[0000] schedule failed because sub command required
 
 schedule  usage:
@@ -407,7 +407,7 @@ schedule {create|delete|update|get|ls}
 
 ### schedule create
 ```
-docker run -i --rm --net host -t adobe-platform/go-metronome:029ef7418691d812dacc4a01ded16598cfbe7ccb /usr/local/bin/go-metronome-cli-linux-amd64 schedule create
+docker run -i --rm --net host -t adobe-platform/go-metronome:029ef7418691d812dacc4a01ded16598cfbe7ccb /usr/local/bin/metronome-cli-linux-amd64 schedule create
 FATA[0000] schedule failed because Missing JobId in JobScheduleCreate
 
 
@@ -431,7 +431,7 @@ schedule create usage:
 
 ## run submenu
 ```
-docker run -i --rm --net host -t adobe-platform/go-metronome:029ef7418691d812dacc4a01ded16598cfbe7ccb /usr/local/bin/go-metronome-cli-linux-amd64 run            
+docker run -i --rm --net host -t adobe-platform/go-metronome:029ef7418691d812dacc4a01ded16598cfbe7ccb /usr/local/bin/metronome-cli-linux-amd64 run            
 FATA[0000] run failed because sub command required
 
   usage:
@@ -446,7 +446,7 @@ run <action> [options]:
 ```
 ### run create
 ```
-docker run -i --rm --net host -t adobe-platform/go-metronome:029ef7418691d812dacc4a01ded16598cfbe7ccb /usr/local/bin/go-metronome-cli-linux-amd64 run start 
+docker run -i --rm --net host -t adobe-platform/go-metronome:029ef7418691d812dacc4a01ded16598cfbe7ccb /usr/local/bin/metronome-cli-linux-amd64 run start 
 FATA[0000] run failed because job-id required
 
 
