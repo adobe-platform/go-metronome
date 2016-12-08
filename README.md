@@ -341,12 +341,60 @@ HTTP_PROXY=localhost:8123 ./metronome-cli-linux-amd64 --metronome-url "$( dcos c
 
 ## No options
 ```
-/usr/local/bin/metronome-cli-linux-amd64 <global-options> <action: one of {job|run|schedule|metrics|ping|help}> [<action options>|help ] 
- For more help, use 
+USAGE
+
+         ./metronome-cli-linux-amd64 <global-options>  {job|run|schedule|metrics|ping|help} [<action options>|help]
+
+COMMANDS:
+
+job {create|delete|update|ls|get|schedules|schedule|help}
+
+          create  <options>   | creates a Job
+          delete  <options>   | deletes a Job
+          update  <options>   | update a Job
+          get     <options>   | get a Job by job-id
+          schedules <options> | get all schedules [] for a Job
+          schedule  <options> | get a particular Schedule for Job
+          ls                  | get all Jobs []
+          Call job <action> help for more on a sub-command
+
+run {start|stop|ls|get} <options>:
+
+          start <options>  | Start a Job that has a schedule.
+          stop  <options>  | Stop a Job
+          ls               | Status a Job -- currently only returns 'ACTIVE' jobs
+          get <options>    | Get a Job run status.
+
+          Call run <action> help for more on a sub-command
+
+schedule {create|delete|update|get|ls}
+
+          create  <options>  | Create a Schedule for a Job
+          delete  <options>  | Delete a Schedule for a Job
+          update  <options>  | Update a Schedule for a Job
+          get     <options>  | Get a single Schedule for a Job
+          ls                 | Get all Schedules for a Job
+
+
+metrics  -  dumps metronome metrics
+
+ping  - pings metronome
+
+
+GLOBAL OPTIONS:
+
+
+  -authorization string
+        Authorization token
   -debug
         Turn on debug
   -metronome-url string
         Set the Metronome address (default "http://localhost:9000")
+  -password string
+        password
+  -user string
+        user
+
 ```
 ## job sub menu
 ```

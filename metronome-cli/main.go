@@ -5,7 +5,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"os"
 	"strings"
-	"errors"
+	//"errors"
 	"encoding/json"
 	. "github.com/adobe-platform/go-metronome/metronome-cli/cli_support"
 )
@@ -29,15 +29,30 @@ func Usage(msg string) {
 	if msg != "" {
 		logrus.Errorf(" %s ", msg)
 	}
-	logrus.Errorf("usage: %s <global-options> <action: one of {%s}> [<action options>|help ]", os.Args[0], strings.Join([]string{
+	options := []string{
 		"job",
 		"run",
 		"schedule",
 		"metrics",
 		"ping",
-		"help",
-	}, "|"))
-	fmt.Println(" For more help, use ")
+
+	}
+	fmt.Fprintf(os.Stderr, `USAGE
+
+	 %s <global-options>  {%s|help} [<action options>|help]
+
+COMMANDS:
+	 `, os.Args[0], strings.Join(options, "|"))
+	fmt.Fprintln(os.Stderr,"")
+	for _, action := range options {
+		commands[action].Usage(os.Stderr)
+	}
+	fmt.Fprintln(os.Stderr, `
+
+GLOBAL OPTIONS:
+
+		`)
+
 	runtime := &Runtime{}
 	runtime.Usage(os.Stderr)
 	os.Exit(2)
@@ -71,11 +86,11 @@ func main() {
 		}
 		logrus.Debugf("commonArgs %+v action: %s\n", commonArgs, action)
 		if _, err := runtime.Parse(commonArgs); err != nil {
-			panic(err)
+			Usage(err.Error())
 		} else if action == "" {
-			panic(errors.New("missing action"))
+			Usage("missing action")
 		} else if commands[action] == nil {
-			panic(errors.New(fmt.Sprintf("'%s' command not defined", action)))
+			Usage(fmt.Sprintf("'%s' command not defined", action))
 		}
 		if runtime.Debug {
 			logrus.SetLevel(logrus.DebugLevel)

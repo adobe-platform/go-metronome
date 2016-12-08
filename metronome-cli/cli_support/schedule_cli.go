@@ -29,12 +29,12 @@ type SchedTopLevel struct {
 
 func (self *SchedTopLevel) Usage(writer io.Writer) {
 	fmt.Fprintf(writer, "schedule {create|delete|update|get|ls}  \n")
-	fmt.Fprint(writer, `
-	  create  <options>
-	  delete  <options>
-	  update  <options>
-	  get     <options>
-	  ls
+	fmt.Fprintln(writer, `
+	  create  <options>  | Create a Schedule for a Job
+	  delete  <options>  | Delete a Schedule for a Job
+	  update  <options>  | Update a Schedule for a Job
+	  get     <options>  | Get a single Schedule for a Job
+	  ls                 | Get all Schedules for a Job
 	`)
 }
 func (self *SchedTopLevel) Parse(args [] string) (exec CommandExec, err error) {

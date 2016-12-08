@@ -13,12 +13,12 @@ import (
 type RunsTopLevel JobTopLevel
 
 func (self *RunsTopLevel) Usage(writer io.Writer) {
-	fmt.Fprintf(writer, "run <action> [options]:\n")
-	fmt.Fprint(writer, `
-	  start [options]
-	  stop  [options]
-	  ls
-	  get [options]
+	fmt.Fprintf(writer, "run {start|stop|ls|get} <options>:\n")
+	fmt.Fprintln(writer, `
+	  start <options>  | Start a Job that has a schedule.
+	  stop  <options>  | Stop a Job
+	  ls               | Status a Job -- currently only returns 'ACTIVE' jobs
+	  get <options>    | Get a Job run status.
 
 	  Call run <action> help for more on a sub-command
 	`)

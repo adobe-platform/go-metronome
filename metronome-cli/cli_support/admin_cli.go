@@ -12,7 +12,7 @@ import (
 type Metrics int
 
 func (self *Metrics) Usage(writer io.Writer) {
-	fmt.Fprintf(writer, "dumps metronome metrics\n")
+	fmt.Fprintf(writer, "\nmetrics  -  dumps metronome metrics\n")
 }
 
 func (self *Metrics) Parse(args []string) (CommandExec, error) {
@@ -26,7 +26,7 @@ func (self *Metrics) Execute(runtime *Runtime) (interface{}, error) {
 type Ping int
 
 func (self *Ping) Usage(writer io.Writer) {
-	fmt.Fprintf(writer, "ping  - pings metronome\n")
+	fmt.Fprintf(writer, "\nping  - pings metronome\n")
 }
 
 func (self *Ping) Parse(args []string) (CommandExec, error) {

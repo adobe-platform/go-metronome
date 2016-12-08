@@ -21,6 +21,17 @@ type JobTopLevel struct {
 
 func (self *JobTopLevel) Usage(writer io.Writer) {
 	fmt.Fprintf(writer, "job {create|delete|update|ls|get|schedules|schedule|help}\n")
+	fmt.Fprintln(writer, `
+	  create  <options>   | creates a Job
+	  delete  <options>   | deletes a Job
+	  update  <options>   | update a Job
+	  get     <options>   | get a Job by job-id
+	  schedules <options> | get all schedules [] for a Job
+	  schedule  <options> | get a particular Schedule for Job
+	  ls                  | get all Jobs []
+	  Call job <action> help for more on a sub-command
+	`)
+
 }
 func (self *JobTopLevel) Parse(args [] string) (exec CommandExec, err error) {
 	defer func() {
