@@ -117,14 +117,14 @@ func main() {
 					if err := json.Unmarshal(by, &f); err != nil {
 						logrus.Infof(string(by))
 					} else {
-						if b2, err2 := json.Marshal(f); err2 != nil {
+						if b2, err2 := json.MarshalIndent(f,"","  "); err2 != nil {
 							logrus.Infof(string(by))
 						} else {
 							logrus.Infof(string(b2))
 						}
 					}
 				default:
-					if bb, err7 := json.Marshal(result); err7 == nil {
+					if bb, err7 := json.MarshalIndent(result,"", "  "); err7 == nil {
 						logrus.Infof("result %s\n", (string(bb)))
 					}
 				}

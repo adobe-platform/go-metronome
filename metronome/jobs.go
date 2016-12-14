@@ -68,17 +68,21 @@ func (client *Client) UpdateJob(jobId string, job *Job) (interface{}, error) {
 //
 // schedules
 // GET /v1/jobs/$jobId/runs
-func (client *Client) Runs(jobId string) (*Job, error) {
+
+
+func (client *Client) Runs(jobId string, since int64) (*Job, error) {
 	//jobs := make([]JobStatus, 0, 0)
 	//jobs := make([]Job, 0, 0)
 	var jobs Job
 	queryParams := map[string][]string{
 		"_timestamp": {
-			strconv.FormatInt(time.Now().UnixNano() / int64(time.Millisecond) - 24 * 3600000, 10),
+			strconv.FormatInt(since , 10),
+//			strconv.FormatInt(time.Now().UnixNano() / int64(time.Millisecond) - 24 * 3600000, 10),
 		},
 		"embed" : {
 			"history",
 			"historySummary",
+			"activeRuns",
 		},
 	}
 	// lame hidden parameters are only reachable via /v1/jobs/$jobId with queryParams

@@ -103,7 +103,7 @@ func (self *RunLs) Parse(args []string) (_ CommandExec, err error) {
 }
 
 func (self *RunLs) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.Runs(string(*self))
+	return runtime.client.Runs(string(*self), 0)
 }
 // POST /v1/jobs/$jobId/runs
 type RunStartJob JobId

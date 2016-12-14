@@ -2,23 +2,16 @@ package metronome_test
 
 import (
 	"net/http"
-	//"time"
-
 	. "github.com/adobe-platform/go-metronome/metronome"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
 	"github.com/onsi/gomega/ghttp"
-	//"fmt"
 	"bytes"
 	"encoding/json"
 	"fmt"
-//	"net/url"
-//	"github.com/onsi/gomega/types"
 	"strconv"
+	"time"
 )
-
 
 var _ = Describe("Jobs", func() {
 	var (
@@ -258,8 +251,8 @@ var _ = Describe("Jobs", func() {
 						Expect(values["_timestamp"]).NotTo(Equal(nil))
 						Expect(values["_timestamp"]).To(HaveLen(1))
 						tm, err := strconv.Atoi(values["_timestamp"][0])
-						Expect(err).ShouldNot(HaveOccurred(),"Expected _timestamp >= 1481414058857")
-						Expect(tm > 1481414058857 ).To(BeTrue())
+						Expect(err).ShouldNot(HaveOccurred(), "Expected _timestamp >= 1481414058857")
+						Expect(tm > 1481414058857).To(BeTrue())
 
 					},
 					ghttp.RespondWith(http.StatusOK, `
@@ -269,10 +262,10 @@ var _ = Describe("Jobs", func() {
 		})
 
 		It("Makes a request to get all jobs", func() {
-			result,err  := client.RunLs("foo.bar")
+			result, err := client.Runs("foo.bar", time.Now().UnixNano() / int64(time.Millisecond) )
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(server.ReceivedRequests()).To(HaveLen(2))
-			fmt.Printf("%+v\n",result)
+			fmt.Printf("%+v\n", result)
 		})
 	})
 

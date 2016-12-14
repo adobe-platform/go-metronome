@@ -12,9 +12,7 @@ import (
 	"io/ioutil"
 	"github.com/Sirupsen/logrus"
 	"bytes"
-
 	"path"
-//	"github.com/aws/aws-sdk-go/aws/request"
 )
 
 // Constants to represent HTTP verbs
@@ -48,7 +46,10 @@ type Metronome interface {
 	//
 	// schedules
 	// GET /v1/jobs/$jobId/runs
-	Runs(jobId string) (*Job, error)
+	// Technically, this rev of Runs() is a hack to get functionality from the undocumented api
+	//   - since is milliseconds from epoch
+
+	Runs(jobId string, statusSince int64) (*Job, error)
 	// POST /v1/jobs/$jobId/runs
 	StartJob(jobId string) (interface{}, error)
 	// GET /v1/jobs/$jobId/runs/$runId
@@ -77,6 +78,9 @@ type Metronome interface {
 }
 
 
+func TwentyFourHoursAgo() int64{
+	return time.Now().UnixNano() / int64(time.Millisecond) - 24 * 3600000
+}
 
 // A Client can make http requests
 type Client struct {
@@ -135,7 +139,6 @@ func (client *Client) apiPost(uri string, queryParams map[string][]string, postD
 	enc.SetEscapeHTML(false)
 	err = enc.Encode(postData)
 
-	//fmt.Printf("post data:%s\n",postDataString.String())
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
@@ -191,7 +194,6 @@ func (client *Client) apiCall(method string, uri string, queryParams map[string]
 		default:
 			return status, errors.New(fmt.Sprintf("Unknown content-type %s", ct[0]))
 		}
-
 	}
 
 	// TODO: Handle error status codes
