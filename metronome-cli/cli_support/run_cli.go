@@ -103,7 +103,7 @@ func (self *RunLs) Parse(args []string) (_ CommandExec, err error) {
 }
 
 func (self *RunLs) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.RunLs(string(*self))
+	return runtime.client.Runs(string(*self))
 }
 // POST /v1/jobs/$jobId/runs
 type RunStartJob JobId
@@ -135,7 +135,7 @@ func (self *RunStartJob) Parse(args []string) (_ CommandExec, err error) {
 	}
 }
 func (self *RunStartJob) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.RunStartJob(string(*self))
+	return runtime.client.StartJob(string(*self))
 }
 // GET  /v1/jobs/$jobId/runs/$runId
 type RunStatusJob struct {
@@ -185,7 +185,7 @@ func (self *RunStatusJob) Parse(args []string) (_ CommandExec, err error) {
 	}
 }
 func (self *RunStatusJob) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.RunStatusJob(string(self.JobId), string(self.RunId))
+	return runtime.client.StatusJob(string(self.JobId), string(self.RunId))
 }
 // POST /v1/jobs/$jobId/runs/$runId/action/stop
 type RunStopJob RunStatusJob
@@ -217,5 +217,5 @@ func (self *RunStopJob) Parse(args []string) (_ CommandExec, err error) {
 	return self, nil
 }
 func (self *RunStopJob) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.RunStopJob(string(self.JobId), string(self.RunId))
+	return runtime.client.StopJob(string(self.JobId), string(self.RunId))
 }

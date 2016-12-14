@@ -286,7 +286,7 @@ var _ = Describe("Jobs", func() {
 			})
 
 			It("Makes the start request", func() {
-				st, err := client.RunStartJob(job_without_arguments)
+				st, err := client.StartJob(job_without_arguments)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				_, found := st.(JobStatus)

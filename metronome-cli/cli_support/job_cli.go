@@ -271,7 +271,7 @@ func (self *JobRunNow) Execute(runtime *Runtime) (interface{}, error) {
 		return nil, err
 
 	} else {
-		return runtime.client.RunStartJob(self.job.ID_)
+		return runtime.client.StartJob(self.job.ID_)
 	}
 }
 
@@ -404,5 +404,5 @@ func (self *JobUpdate) Parse(args [] string) (_ CommandExec, err error) {
 }
 // JobUpdate - implement CommandExec
 func (self *JobUpdate) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.JobUpdate(string(self.JobId), self.job)
+	return runtime.client.UpdateJob(string(self.JobId), self.job)
 }

@@ -143,7 +143,7 @@ func (self *JobSchedGet) Parse(args []string) (_ CommandExec, err error) {
 	}
 }
 func (self *JobSchedGet) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.JobScheduleGet(string(self.JobId), string(self.SchedId))
+	return runtime.client.GetSchedule(string(self.JobId), string(self.SchedId))
 }
 // DELETE /v1/jobs/$jobId/schedules/$scheduleId
 type JobSchedDelete JobSchedBase
@@ -176,7 +176,7 @@ func (self *JobSchedDelete) Parse(args []string) (_ CommandExec, err error) {
 }
 
 func (self *JobSchedDelete) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.JobScheduleDelete(string(self.JobId), string(self.SchedId))
+	return runtime.client.DeleteSchedule(string(self.JobId), string(self.SchedId))
 }
 // GET /v1/jobs/$jobId/schedules
 type JobScheduleList JobId
@@ -210,7 +210,7 @@ func (self *JobScheduleList) Parse(args [] string) (_ CommandExec, err error) {
 }
 // JobScheduleList - implement CommandExec
 func (self *JobScheduleList) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.JobScheduleList(string(*self))
+	return runtime.client.Schedules(string(*self))
 }
 
 // POST /v1/jobs/$jobId/schedules
@@ -247,7 +247,7 @@ func (self *JobScheduleCreate) Parse(args [] string) (_ CommandExec, err error) 
 }
 // JobScheduleCreate- implement CommandExec
 func (self *JobScheduleCreate) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.JobScheduleCreate(string(self.JobId), &self.Schedule)
+	return runtime.client.CreateSchedule(string(self.JobId), &self.Schedule)
 }
 
 // PUT /v1/jobs/$jobId/schedules/$scheduleId
@@ -281,7 +281,7 @@ func (self *JobSchedUpdate) Parse(args []string) (_ CommandExec, err error) {
 	}
 }
 func (self *JobSchedUpdate) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.JobScheduleUpdate(string(self.JobId), string(self.Schedule.ID), &self.Schedule)
+	return runtime.client.UpdateSchedule(string(self.JobId), string(self.Schedule.ID), &self.Schedule)
 }
 
 
