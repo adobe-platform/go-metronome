@@ -6,13 +6,20 @@ install-deps:
 	go get -u github.com/kardianos/govendor
 	govendor sync
 
-test:
-	make install-deps 
-	go vet ./...
-	golint ./...
-	ginkgo -r -trace -failFast -v --cover --randomizeAllSpecs --randomizeSuites -p
-	echo "" && for i in $$(ls **/*.coverprofile); do echo "$${i}" && go tool cover -func=$${i} && echo ""; done
-	echo "" && for i in $$(ls **/**/*.coverprofile); do echo "$${i}" && go tool cover -func=$${i} && echo ""; done
+_tests:
+	go test -v $$(go list ./... | grep -v /vendor/)
+
+test: dev_container
+	@grep -q docker  /proc/1/cgroup ; \
+        if [ $$? -ne 0 ]; then \
+		docker run -i --rm \
+		-v $$(pwd):/go/src/github.com/adobe-platform/go-metronome \
+		-w /go/src/github.com/adobe-platform/go-metronome \
+                -t adobe-platform/go-metronome:1.7.3-dev \
+		make _tests ;\
+	else \
+		make _tests ; \
+	fi
 
 
 # Make compilation depend on the docker dev container
