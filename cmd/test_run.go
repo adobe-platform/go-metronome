@@ -171,8 +171,8 @@ func main4() {
 			panic(err6)
 		} else {
 			job.SetLabel(Labels{
-				Location: "olympus",
-				Owner: "zeus",
+				"Location": "olympus",
+				"Owner": "zeus",
 			})
 			if res1B, err := json.Marshal(job); err != nil {
 				panic(err)

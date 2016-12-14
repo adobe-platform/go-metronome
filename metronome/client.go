@@ -14,6 +14,7 @@ import (
 	"bytes"
 
 	"path"
+//	"github.com/aws/aws-sdk-go/aws/request"
 )
 
 // Constants to represent HTTP verbs
@@ -47,7 +48,7 @@ type Metronome interface {
 	//
 	// schedules
 	// GET /v1/jobs/$jobId/runs
-	RunLs(jobId string) (*[]JobStatus, error)
+	RunLs(jobId string) (*Job, error)
 	// POST /v1/jobs/$jobId/runs
 	RunStartJob(jobId string) (interface{}, error)
 	// GET /v1/jobs/$jobId/runs/$runId
@@ -109,16 +110,16 @@ func NewClient(config Config) (Metronome, error) {
 	return client, nil
 }
 
-func (client *Client) apiGet(uri string, queryParams map[string]string, result interface{}) (status int, err error) {
+func (client *Client) apiGet(uri string, queryParams map[string][]string, result interface{}) (status int, err error) {
 	return  client.apiCall(HTTPGet, uri, queryParams, "", result)
 }
 
-func (client *Client) apiDelete(uri string, queryParams map[string]string, result interface{}) (status int, err error) {
+func (client *Client) apiDelete(uri string, queryParams map[string][]string, result interface{}) (status int, err error) {
 	return   client.apiCall(HTTPDelete, uri, queryParams, "", result)
 
 }
 
-func (client *Client) apiPut(uri string, queryParams map[string]string, putData interface{}, result interface{}) (status int,err error) {
+func (client *Client) apiPut(uri string, queryParams map[string][]string, putData interface{}, result interface{}) (status int,err error) {
 	var putDataString []byte
 	if putData != nil {
 		putDataString, err = json.Marshal(putData)
@@ -127,7 +128,7 @@ func (client *Client) apiPut(uri string, queryParams map[string]string, putData 
 	return client.apiCall(HTTPPut, uri, queryParams, string(putDataString), result)
 }
 
-func (client *Client) apiPost(uri string, queryParams map[string]string, postData interface{}, result interface{}) (status int, err error) {
+func (client *Client) apiPost(uri string, queryParams map[string][]string, postData interface{}, result interface{}) (status int, err error) {
 	//postDataString, err := json.Marshal(postData)
 	postDataString := new(bytes.Buffer)
 	enc := json.NewEncoder(postDataString)
@@ -143,7 +144,7 @@ func (client *Client) apiPost(uri string, queryParams map[string]string, postDat
 
 }
 
-func (client *Client) apiCall(method string, uri string, queryParams map[string]string, body string, result interface{}) (int, error) {
+func (client *Client) apiCall(method string, uri string, queryParams map[string][]string, body string, result interface{}) (int, error) {
 	client.buildURL(uri, queryParams)
 	status, response, err := client.httpCall(method, body)
 
@@ -199,12 +200,14 @@ func (client *Client) apiCall(method string, uri string, queryParams map[string]
 	}
 	return status, nil
 }
-func (client *Client) buildURL(req_path string, queryParams map[string]string) {
+func (client *Client) buildURL(req_path string, queryParams map[string][]string) {
 	query := client.url.Query()
 	master,_ := url.Parse(client.config.URL)
 	prefix :=master.Path
-	for k, v := range queryParams {
-		query.Add(k, v)
+	for k, vl := range queryParams {
+		for _,val := range vl {
+			query.Add(k, val)
+		}
 	}
 	client.url.RawQuery = query.Encode()
 

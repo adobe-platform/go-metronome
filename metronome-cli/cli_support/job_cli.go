@@ -21,7 +21,7 @@ type JobTopLevel struct {
 
 func (self *JobTopLevel) Usage(writer io.Writer) {
 	fmt.Fprintf(writer, "job {create|delete|update|ls|get|schedules|schedule|help}\n")
-	fmt.Fprintln(writer, `
+	fmt.Fprintf(writer, `
 	  create  <options>   | creates a Job
 	  delete  <options>   | deletes a Job
 	  update  <options>   | update a Job
@@ -110,7 +110,7 @@ type JobCreateConfig struct {
 	constraints             ConstraintList
 	volumes                 VolumeList
 	env                     NvList
-	labels                  LabelList
+	labels                  NvList
 	artifacts               ArtifactList
 	args                    RunArgs
 	cmd                     string
@@ -156,10 +156,6 @@ func (self *JobCreateConfig) makeJob() (*met.Job, error) {
 	if self.description != "" {
 		description = self.description
 	}
-	var ll *met.Labels
-	if self.labels.Location != "" || self.labels.Owner != "" {
-		ll = (*met.Labels)(&self.labels)
-	}
 	if len(self.restart_policy) > 0 || self.active_deadline_seconds != 0 {
 		if restart, err := met.NewRestart(self.active_deadline_seconds, self.restart_policy); err != nil {
 			return nil, err
@@ -167,7 +163,7 @@ func (self *JobCreateConfig) makeJob() (*met.Job, error) {
 			run.SetRestart(restart)
 		}
 	}
-	newJob, err := met.NewJob(string(self.JobId), description, ll, run)
+	newJob, err := met.NewJob(string(self.JobId), description, met.Labels(self.labels), run)
 	if err != nil {
 		return nil, err
 
@@ -189,6 +185,9 @@ func (self *JobCreateRuntime) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
 	if self.env == nil {
 		self.env = make(map[string]string)
 	}
+	if self.labels == nil {
+		self.labels = make(map[string]string)
+	}
 
 	logrus.Debugf("nvlist: %+v", self.env)
 	flags.StringVar((*string)(&self.JobId), "job-id", "", "Job Id")
@@ -205,7 +204,7 @@ func (self *JobCreateRuntime) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
 	                                cache,extract,executable are optional.  uri is required`)
 	flags.Var(&self.args, "arg", "Adds Arg metrononome->Job->Run->Args. You can call more than once")
 	flags.Var(&self.env, "env", "VAR=VAL . Adds Volume passed on to Job.Run.[]Volumes.  You can call more than once")
-	flags.Var(&self.labels, "label", "Location=xxx; Owner=yyy")
+	flags.Var(&self.labels, "label", "VAR=VAL . Ends up adding env variables to docker containers")
 	flags.StringVar(&self.user, "user", "root", "user to run as")
 	flags.StringVar(&self.cmd, "cmd", "", "Command to run")
 	flags.IntVar(&self.maxLaunchDelay, "max-launch-delay", 900, "Max Launch delay.  minimum 1")

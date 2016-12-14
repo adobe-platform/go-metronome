@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-
 )
 
 var whitespaceRe = regexp.MustCompile(`\s+`)
@@ -25,8 +24,8 @@ func required(msg string) error {
 // Jobs is a slice of jobs
 type Artifact struct {
 	Uri_        string `json:"uri"`
-	Executable_ bool   `json:"executable"`
 	Extract_    bool   `json:"extract"`
+	Executable_ bool   `json:"executable"`
 	Cache_      bool   `json:"cache"`
 }
 
@@ -87,7 +86,7 @@ func decode_operator(op string) (Operator, error) {
 		return UNLIKE, nil
 	default:
 		fmt.Printf("Operator.UnmarshallJSON - unknown value '%s'\n", op)
-		return -1,constraintViol
+		return -1, constraintViol
 	}
 
 }
@@ -182,11 +181,11 @@ func (self *MountMode) MarshalJSON() ([]byte, error) {
 func decode_mount(mode string) (MountMode, error) {
 	switch mode {
 	case "RO":
-		return RO,nil
+		return RO, nil
 	case "RW":
-		return RW,nil
+		return RW, nil
 	default:
-		return -1,mountViol
+		return -1, mountViol
 	}
 
 }
@@ -284,8 +283,8 @@ func (self *Restart) Policy() string {
 func NewRestart(activeDeadlineSeconds int, policy string) (*Restart, error) {
 	if len(policy) == 0 {
 		return nil, required("length(Restart.policy)>0")
-	} else if !(policy=="NEVER" || policy == "ON_FAILURE") {
-		return nil,errors.New(fmt.Sprintf("Policy must be 'ON_FAILURE' or 'NEVER' not %s",policy))
+	} else if !(policy == "NEVER" || policy == "ON_FAILURE") {
+		return nil, errors.New(fmt.Sprintf("Policy must be 'ON_FAILURE' or 'NEVER' not %s", policy))
 	}
 	return &Restart{ActiveDeadlineSeconds_: activeDeadlineSeconds, Policy_: policy}, nil
 }
@@ -449,19 +448,26 @@ func NewRun(cpus float64, mem int, disk int) (*Run, error) {
 	return &vg, nil
 }
 
+/*
 type Labels struct {
 	Location string `json:"location"`
 	Owner    string `json:"owner"`
-}
+}*/
+type Labels map[string]string
 
 type Job struct {
 	Description_ string `json:"description"`
 	ID_          string `json:"id"`
 	Labels_      *Labels`json:"labels,omitempty"`
 	Run_         *Run `json:"run"`
+	Schedules       []*Schedule `json:"schedules,omitempty"`
+	ActiveRuns      [] *ActiveRun`json:"activeRuns,omitempty"`
+	History_        *History `json:"history,omitempty"`
+	HistorySummary_ *HistorySummary `json:"historySummary,omitempty"`
+
 }
 
-func NewJob(id string, description string, labels *Labels, run *Run) (*Job, error) {
+func NewJob(id string, description string, labels Labels, run *Run) (*Job, error) {
 	if len(id) == 0 {
 		return nil, required("Job.Id")
 	}
@@ -470,7 +476,7 @@ func NewJob(id string, description string, labels *Labels, run *Run) (*Job, erro
 	}
 	return &Job{ID_: id,
 		Description_: description,
-		Labels_: labels,
+		Labels_: &labels,
 		Run_: run,
 	}, nil
 }
@@ -506,19 +512,57 @@ func (self *Job) SetLabel(label Labels) *Job {
 }
 
 type Schedule struct {
-	ID string `json:"id"`
-	Cron string `json:"cron"`
-	ConcurrencyPolicy string `json:"concurrencyPolicy"`
-	Enabled bool `json:"enabled"`
+	ID                      string `json:"id"`
+	Cron                    string `json:"cron"`
+	ConcurrencyPolicy       string `json:"concurrencyPolicy"`
+	Enabled                 bool `json:"enabled"`
 	StartingDeadlineSeconds int `json:"startingDeadlineSeconds"`
-	Timezone string `json:"timezone"`
+	Timezone                string `json:"timezone"`
+	NextRunAt               string `json:"nextRunAt,omitempty"`
 }
 type JobStatus struct {
 	CompletedAt interface{} `json:"completedAt"`
-	CreatedAt string `json:"createdAt"`
-	ID string `json:"id"`
-	JobID string `json:"jobId"`
-	Status string `json:"status"`
-	Tasks []interface{} `json:"tasks"`
+	CreatedAt   string `json:"createdAt"`
+	ID          string `json:"id"`
+	JobID       string `json:"jobId"`
+	Status      string `json:"status"`
+	Tasks       []interface{} `json:"tasks"`
 }
 type Jobs []Job
+
+
+type ActiveRun struct {
+	ID          string `json:"id"`
+	JobID       string `json:"jobId"`
+	Status      string `json:"status"`
+	CreatedAt   string `json:"createdAt"`
+	CompletedAt interface{} `json:"completedAt"`
+	Tasks       []struct {
+		ID        string `json:"id"`
+		StartedAt string `json:"startedAt"`
+		Status    string `json:"status"`
+	} `json:"tasks"`
+}
+
+type History struct {
+	SuccessCount           int `json:"successCount"`
+	FailureCount           int `json:"failureCount"`
+	LastSuccessAt          string `json:"lastSuccessAt"`
+	LastFailureAt          string `json:"lastFailureAt"`
+	SuccessfulFinishedRuns []struct {
+		ID         string `json:"id"`
+		CreatedAt  string `json:"createdAt"`
+		FinishedAt string `json:"finishedAt"`
+	} `json:"successfulFinishedRuns"`
+	FailedFinishedRuns     []struct {
+		ID         string `json:"id"`
+		CreatedAt  string `json:"createdAt"`
+		FinishedAt string `json:"finishedAt"`
+	} `json:"failedFinishedRuns"`
+}
+type HistorySummary struct {
+	SuccessCount  int `json:"successCount"`
+	FailureCount  int `json:"failureCount"`
+	LastSuccessAt string `json:"lastSuccessAt"`
+	LastFailureAt string `json:"lastFailureAt"`
+}

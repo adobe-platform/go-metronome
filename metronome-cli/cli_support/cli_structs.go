@@ -21,7 +21,6 @@ type RunArgs []string
 type NvList map[string]string
 type ConstraintList [] met.Constraint
 type VolumeList [] met.Volume
-type LabelList  met.Labels
 type ArtifactList  []met.Artifact
 
 // type override to support parsing.  []string alias for met.Run.Args
@@ -34,34 +33,6 @@ func (i *RunArgs) String() string {
 func (i *RunArgs) Set(value string) error {
 	logrus.Debugf("Args.Set %s", value)
 	*i = append(*i, value)
-	return nil
-}
-// type override to support parsing.  LabelList alias' met.Labels
-// It implements flag.Value via Set/String
-
-func (i *LabelList) String() string {
-	return fmt.Sprintf("%s", *i)
-}
-// The second method is Set(value string) error
-func (lb *LabelList) Set(value string) error {
-	logrus.Debugf("LabelList %s", value)
-	v := strings.Split(value, ";")
-	logrus.Debugf("LabelList %+v", v)
-	//lb := LabelList{}
-	for _, ii := range v {
-		nv := strings.Split(ii, "=")
-		switch strings.ToLower(nv[0]) {
-		case "location":
-			lb.Location = nv[1]
-		case "owner":
-			lb.Owner = nv[1]
-		default:
-			return errors.New("Unknown value" + nv[0])
-		}
-	}
-	if lb.Location == ""  && lb.Owner == "" {
-		return errors.New("Missing both location and owner")
-	}
 	return nil
 }
 // type override to support parsing.  env alias' map[string]string
@@ -79,7 +50,7 @@ func (self *NvList) Set(value string) error {
 	}
 	logrus.Debugf("NvList %+v", nv)
 	vv := (*self)
-	vv[nv[0]] = nv[1]
+	vv[strings.TrimSpace(nv[0])] = strings.TrimSpace(nv[1])
 	return nil
 }
 // ConstraintList
