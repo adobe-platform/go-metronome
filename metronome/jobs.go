@@ -83,6 +83,7 @@ func (client *Client) Runs(jobId string, since int64) (*Job, error) {
 			"history",
 			"historySummary",
 			"activeRuns",
+			"schedules",
 		},
 	}
 	// lame hidden parameters are only reachable via /v1/jobs/$jobId with queryParams
