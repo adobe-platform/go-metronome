@@ -33,7 +33,15 @@ func (client *Client)  DeleteJob(jobId string) (interface{}, error) {
 // GET /v1/jobs/$jobId
 func (client *Client) GetJob(jobId string) (*Job, error) {
 	var job Job
-	if _, err := client.apiGet(fmt.Sprintf(MetronomeAPIJobGet, jobId), nil, &job); err != nil {
+	queryParams := map[string][]string{
+		"embed" : {
+			"historySummary",
+			"activeRuns",
+			"schedules",
+		},
+	}
+
+	if _, err := client.apiGet(fmt.Sprintf(MetronomeAPIJobGet, jobId), queryParams, &job); err != nil {
 		return nil, err
 	} else {
 		return &job, err
@@ -43,8 +51,14 @@ func (client *Client) GetJob(jobId string) (*Job, error) {
 func (client *Client)  Jobs() (*[]Job, error) {
 	//	jobs := new(Jobs)
 	jobs := make([]Job, 0, 0)
+	queryParams := map[string][]string{
+		"embed" : {
+			"historySummary",
+			"activeRuns",
+		},
+	}
 
-	_, err := client.apiGet(MetronomeAPIJobList, nil, &jobs)
+	_, err := client.apiGet(MetronomeAPIJobList, queryParams, &jobs)
 
 	if err != nil {
 		return nil, err
