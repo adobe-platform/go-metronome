@@ -1,3 +1,6 @@
 */*.coverprofile
 *~
 vendor/*/
+# intellij files
+.idea
+*.iml
