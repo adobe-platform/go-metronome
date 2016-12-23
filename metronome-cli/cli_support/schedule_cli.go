@@ -10,24 +10,28 @@ import (
 	"io"
 )
 
+// Scheduling related cli support structures implementing CommandParse and CommandExecute to run Metronome scheduling related
+// API calls.
+// These structures and implementations also implement the Value interface used by flag
 
-// JobSched
+// JobSched - schedules need a job-id and a schedule
 type JobSched struct {
-	JobId
+	JobID
 	met.Schedule
 }
+// JobSchedRun - almost same as JobSched but with different Executor
 type JobSchedRun struct {
 	*JobSched
 }
 //
-// Schedule
+// SchedTopLevel - top-level, cli menu for scheduling.  generally parses out action before instantiating specific, action relate CommandParse implementation
 //
 type SchedTopLevel struct {
 	subcommand string
 	task       CommandParse
 }
-
-func (self *SchedTopLevel) Usage(writer io.Writer) {
+// Usage - schedule toplevel usage
+func (theSchedule *SchedTopLevel) Usage(writer io.Writer) {
 	fmt.Fprintf(writer, "schedule {create|delete|update|get|ls}  \n")
 	fmt.Fprintln(writer, `
 	  create  <options>  | Create a Schedule for a Job
@@ -37,17 +41,18 @@ func (self *SchedTopLevel) Usage(writer io.Writer) {
 	  ls                 | Get all Schedules for a Job
 	`)
 }
-func (self *SchedTopLevel) Parse(args [] string) (exec CommandExec, err error) {
+// Parse - parses out actions, delegates deeper parsing to action specific CommandParse implementations
+func (theSchedule *SchedTopLevel) Parse(args [] string) (exec CommandExec, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			buf := new(bytes.Buffer)
 			fmt.Fprintln(buf, r.(error).Error())
-			fmt.Fprintf(buf, "\nschedule %s usage:\n", self.subcommand)
+			fmt.Fprintf(buf, "\nschedule %s usage:\n", theSchedule.subcommand)
 
-			if self.task != nil {
-				self.task.Usage(buf)
+			if theSchedule.task != nil {
+				theSchedule.task.Usage(buf)
 			}
-			self.Usage(buf)
+			theSchedule.Usage(buf)
 			err = errors.New(buf.String())
 		}
 	}()
@@ -57,74 +62,78 @@ func (self *SchedTopLevel) Parse(args [] string) (exec CommandExec, err error) {
 		panic(errors.New("sub command required"))
 	}
 
-	self.subcommand = args[0]
-	switch self.subcommand {
+	theSchedule.subcommand = args[0]
+	switch theSchedule.subcommand {
 	case "create":
 		// POST /v1/jobs/$jobId/schedules
-		self.task = CommandParse(new(JobScheduleCreate))
+		theSchedule.task = CommandParse(new(JobScheduleCreate))
 	case "ls":
 		// GET /v1/jobs/$jobId/schedules
-		self.task = CommandParse(new(JobScheduleList))
+		theSchedule.task = CommandParse(new(JobScheduleList))
 
 	case "delete":
 		// DELETE /v1/jobs/$jobid/schedules/$scheduleId
-		self.task = CommandParse(new(JobSchedDelete))
+		theSchedule.task = CommandParse(new(JobSchedDelete))
 	case "get":
 		// GET /v1/jobs/$jobId/schedules/$scheduleId
-		self.task = CommandParse(new(JobSchedGet))
+		theSchedule.task = CommandParse(new(JobSchedGet))
 	case "update":
 		// PUT /v1/jobs/$jobId/schedules/$scheduleId
-		self.task = CommandParse(new(JobSchedUpdate))
+		theSchedule.task = CommandParse(new(JobSchedUpdate))
 	case "help", "--help":
 		panic(errors.New("Please help"))
 	default:
-		panic(errors.New(fmt.Sprintf("schedule Don't understand '%s'\n", self.subcommand)))
+		panic(fmt.Errorf("schedule Don't understand '%s'", theSchedule.subcommand))
 	}
 	var subcommandArgs []string
 	if len(args) > 1 {
 		subcommandArgs = args[1:]
 	}
-	logrus.Debugf("schedule %s args: %+v  task: %+v", self.subcommand, subcommandArgs, self.task)
-	if exec, err = self.task.Parse(subcommandArgs); err != nil {
-		fmt.Errorf("SchedTopLevel parse failed %+v\n", err)
-		panic(err)
-	} else {
-		fmt.Errorf("SchedTopLevel parse succeeded %+v\n", exec)
-		return exec, nil
+	logrus.Debugf("schedule %s args: %+v  task: %+v", theSchedule.subcommand, subcommandArgs, theSchedule.task)
+	exec, err = theSchedule.task.Parse(subcommandArgs)
+	if err != nil {
+		panic(fmt.Errorf("SchedTopLevel parse failed %+v", err))
 	}
-}
-// JobSchedBase collects parsing behavior needed in child classes
-type JobSchedBase struct {
-	JobId
-	SchedId
-}
+	logrus.Debugf("SchedTopLevel parse succeeded %+v", exec)
+	return exec, nil
 
-func (self *JobSchedBase) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
-	self.JobId.FlagSet(flags)
-	self.SchedId.FlagSet(flags)
+}
+// JobSchedBase -  collects parsing behavior needed in child classes
+type JobSchedBase struct {
+	JobID
+	SchedID
+}
+// FlagSet - general flags (job-id,schedule-id). Delegates flag creation to JobID, SchedID
+func (theSched *JobSchedBase) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
+	theSched.JobID.FlagSet(flags)
+	theSched.SchedID.FlagSet(flags)
 	return flags
 }
-func (self *JobSchedBase) Validate() error {
-	if err := self.JobId.Validate(); err != nil {
+// Validate - ensures we have valid schedule-id, job-id before returning executor
+func (theSched *JobSchedBase) Validate() error {
+	if err := theSched.JobID.Validate(); err != nil {
 		return err
-	} else if err = self.SchedId.Validate(); err != nil {
+	} else if err = theSched.SchedID.Validate(); err != nil {
 		return err
 	}
 	return nil
 }
-// GET /v1/jobs/$jobId/schedules/$scheduleId
+// JobSchedGet - CommandParse/CommandExecutor for runnig metronome
+//    GET /v1/jobs/$jobId/schedules/$scheduleId
+//    thin type based on JobSchedBase
 type JobSchedGet JobSchedBase
 
-func (self *JobSchedGet) Usage(writer io.Writer) {
+// Usage - gets flags from JobSchedBase
+func (theSched *JobSchedGet) Usage(writer io.Writer) {
 	flags := flag.NewFlagSet("schedule get", flag.ExitOnError)
-	(*JobSchedBase)(self).FlagSet(flags)
+	(*JobSchedBase)(theSched).FlagSet(flags)
 	flags.SetOutput(writer)
 	flags.PrintDefaults()
 }
-
-func (self *JobSchedGet) Parse(args []string) (_ CommandExec, err error) {
+// Parse - parses JobSchedBase params but returns self as executor.  Converts all panics into errors
+func (theSched *JobSchedGet) Parse(args []string) (_ CommandExec, err error) {
 	flags := flag.NewFlagSet("schedule get", flag.ExitOnError)
-	(*JobSchedBase)(self).FlagSet(flags)
+	(*JobSchedBase)(theSched).FlagSet(flags)
 	defer func() {
 		if r := recover(); r != nil {
 			buf := new(bytes.Buffer)
@@ -136,27 +145,30 @@ func (self *JobSchedGet) Parse(args []string) (_ CommandExec, err error) {
 
 	if err = flags.Parse(args); err != nil {
 		panic(err)
-	} else if err = (*JobSchedBase)(self).Validate(); err != nil {
+	} else if err = (*JobSchedBase)(theSched).Validate(); err != nil {
 		panic(err)
 	} else {
-		return self, nil
+		return theSched, nil
 	}
 }
-func (self *JobSchedGet) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.GetSchedule(string(self.JobId), string(self.SchedId))
+// Execute - Runs GET /v1/jobs/$jobId/schedules/$scheduleId
+func (theSched *JobSchedGet) Execute(runtime *Runtime) (interface{}, error) {
+	return runtime.client.GetSchedule(string(theSched.JobID), string(theSched.SchedID))
 }
-// DELETE /v1/jobs/$jobId/schedules/$scheduleId
+// JobSchedDelete - cli structure for executing Metronome API `DELETE /v1/jobs/$jobId/schedules/$scheduleId`
 type JobSchedDelete JobSchedBase
 
-func (self *JobSchedDelete) Usage(writer io.Writer) {
+// Usage - based on on JobSchedBase flags
+func (theSched *JobSchedDelete) Usage(writer io.Writer) {
 	flags := flag.NewFlagSet("schedule delete", flag.ExitOnError)
-	(*JobSchedBase)(self).FlagSet(flags)
+	(*JobSchedBase)(theSched).FlagSet(flags)
 	flags.SetOutput(writer)
 	flags.PrintDefaults()
 }
-func (self *JobSchedDelete) Parse(args []string) (_ CommandExec, err error) {
+// Parse - parses cli flags using JobSchedBase but returns self as CommandExecution interface implementor
+func (theSched *JobSchedDelete) Parse(args []string) (_ CommandExec, err error) {
 	flags := flag.NewFlagSet("schedule delete", flag.ExitOnError)
-	(*JobSchedBase)(self).FlagSet(flags)
+	(*JobSchedBase)(theSched).FlagSet(flags)
 	defer func() {
 		if r := recover(); r != nil {
 			buf := new(bytes.Buffer)
@@ -168,29 +180,31 @@ func (self *JobSchedDelete) Parse(args []string) (_ CommandExec, err error) {
 
 	if err = flags.Parse(args); err != nil {
 		panic(err)
-	} else if err = (*JobSchedBase)(self).Validate(); err != nil {
+	} else if err = (*JobSchedBase)(theSched).Validate(); err != nil {
 		panic(err)
 	} else {
-		return self, nil
+		return theSched, nil
 	}
 }
-
-func (self *JobSchedDelete) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.DeleteSchedule(string(self.JobId), string(self.SchedId))
+// Execute - runs GET /v1/jobs/$jobId/schedules/$scheduleId
+func (theSched *JobSchedDelete) Execute(runtime *Runtime) (interface{}, error) {
+	return runtime.client.DeleteSchedule(string(theSched.JobID), string(theSched.SchedID))
 }
-// GET /v1/jobs/$jobId/schedules
-type JobScheduleList JobId
+// JobScheduleList - cli structure to list a job's schedules -> GET /v1/jobs/$jobId/schedules
+type JobScheduleList JobID
 
-func (self *JobScheduleList) Usage(writer io.Writer) {
+// Usage - flags come for job id
+func (theSched *JobScheduleList) Usage(writer io.Writer) {
 	flags := flag.NewFlagSet("schedule ls", flag.ExitOnError)
-	(*JobId)(self).FlagSet(flags)
+	(*JobID)(theSched).FlagSet(flags)
 	flags.SetOutput(writer)
 	flags.PrintDefaults()
 
 }
-func (self *JobScheduleList) Parse(args [] string) (_ CommandExec, err error) {
+// Parse - flags parsed as with JobID but returns self as CommandExecutor on success
+func (theSched *JobScheduleList) Parse(args [] string) (_ CommandExec, err error) {
 	flags := flag.NewFlagSet("schedule ls", flag.ExitOnError)
-	(*JobId)(self).FlagSet(flags)
+	(*JobID)(theSched).FlagSet(flags)
 	defer func() {
 		if r := recover(); r != nil {
 			buf := new(bytes.Buffer)
@@ -201,31 +215,35 @@ func (self *JobScheduleList) Parse(args [] string) (_ CommandExec, err error) {
 	}()
 	if err = flags.Parse(args); err != nil {
 		panic(err)
-	} else if err = (*JobId)(self).Validate(); err != nil {
+	} else if err = (*JobID)(theSched).Validate(); err != nil {
 		panic(err)
 	} else {
-		return self, nil
+		return theSched, nil
 	}
-	return self, nil
+	return theSched, nil
 }
-// JobScheduleList - implement CommandExec
-func (self *JobScheduleList) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.Schedules(string(*self))
+// Execute - implement CommandExec
+//  - Runs GET /v1/jobs/$jobId/schedules
+func (theSched *JobScheduleList) Execute(runtime *Runtime) (interface{}, error) {
+	return runtime.client.Schedules(string(*theSched))
 }
 
-// POST /v1/jobs/$jobId/schedules
+// JobScheduleCreate - cli implementation of CommandParse,CommandExec to run -> POST /v1/jobs/$jobId/schedules
+//   - derives from JobSched
 type JobScheduleCreate JobSched
 
-func (self *JobScheduleCreate) Usage(writer io.Writer) {
+// Usage - uses flagset for JobSched
+func (theSched *JobScheduleCreate) Usage(writer io.Writer) {
 	flags := flag.NewFlagSet("schedule create", flag.ExitOnError)
-	(*JobSched)(self).FlagSet(flags)
+	(*JobSched)(theSched).FlagSet(flags)
 	flags.SetOutput(writer)
 	flags.PrintDefaults()
 }
-func (self *JobScheduleCreate) Parse(args [] string) (_ CommandExec, err error) {
+// Parse - parses flags per JobSched (job-id) but returns self as CommandExec with validation
+func (theSched *JobScheduleCreate) Parse(args [] string) (_ CommandExec, err error) {
 	logrus.Debugf("JobScheduleCreate.parse args: %+v", args)
 	flags := flag.NewFlagSet("schedule create", flag.ExitOnError)
-	(*JobSched)(self).FlagSet(flags)
+	(*JobSched)(theSched).FlagSet(flags)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -239,31 +257,33 @@ func (self *JobScheduleCreate) Parse(args [] string) (_ CommandExec, err error) 
 	if err = flags.Parse(args); err != nil {
 		logrus.Debugf("JobScheduleCreate.parse failed %+v", err)
 		panic(err)
-	} else if err = (*JobSched)(self).Validate(); err != nil {
+	} else if err = (*JobSched)(theSched).Validate(); err != nil {
 		panic(err)
 	} else {
-		return self, nil
+		return theSched, nil
 	}
 }
-// JobScheduleCreate- implement CommandExec
-func (self *JobScheduleCreate) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.CreateSchedule(string(self.JobId), &self.Schedule)
+// Execute  - implement CommandExec.  Executes POST /v1/jobs/$jobId/schedules
+func (theSched *JobScheduleCreate) Execute(runtime *Runtime) (interface{}, error) {
+	return runtime.client.CreateSchedule(string(theSched.JobID), &theSched.Schedule)
 }
 
-// PUT /v1/jobs/$jobId/schedules/$scheduleId
+// JobSchedUpdate - cli type support executing PUT /v1/jobs/$jobId/schedules/$scheduleId
 type JobSchedUpdate JobSched
 
-func (self *JobSchedUpdate) Usage(writer io.Writer) {
+// Usage - JobSched usage i.e. job-id, sched-id required
+func (theSched *JobSchedUpdate) Usage(writer io.Writer) {
 	flags := flag.NewFlagSet("schedule update", flag.ExitOnError)
-	(*JobSched)(self).FlagSet(flags)
+	(*JobSched)(theSched).FlagSet(flags)
 	flags.SetOutput(writer)
 	flags.PrintDefaults()
 }
 
-func (self *JobSchedUpdate) Parse(args []string) (_ CommandExec, err error) {
+// Parse - JobSched flags but returns self as CommandExec when valid
+func (theSched *JobSchedUpdate) Parse(args []string) (_ CommandExec, err error) {
 	logrus.Debugf("JobSchedUpdate.Parse args: %s", args)
 	flags := flag.NewFlagSet("schedule update", flag.ExitOnError)
-	(*JobSched)(self).FlagSet(flags)
+	(*JobSched)(theSched).FlagSet(flags)
 	defer func() {
 		if r := recover(); r != nil {
 			buf := new(bytes.Buffer)
@@ -274,37 +294,39 @@ func (self *JobSchedUpdate) Parse(args []string) (_ CommandExec, err error) {
 	}()
 	if err = flags.Parse(args); err != nil {
 		panic(err)
-	} else if err = (*JobSched)(self).Validate(); err != nil {
+	} else if err = (*JobSched)(theSched).Validate(); err != nil {
 		panic(err)
 	} else {
-		return self, nil
+		return theSched, nil
 	}
 }
-func (self *JobSchedUpdate) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.UpdateSchedule(string(self.JobId), string(self.Schedule.ID), &self.Schedule)
+// Execute - executes PUT /v1/jobs/$jobId/schedules/$scheduleId
+func (theSched *JobSchedUpdate) Execute(runtime *Runtime) (interface{}, error) {
+	return runtime.client.UpdateSchedule(string(theSched.JobID), string(theSched.Schedule.ID), &theSched.Schedule)
 }
 
-
-func (self *JobSched) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
-	self.JobId.FlagSet(flags)
-	flags.StringVar(&self.Schedule.ID, "sched-id", "", "Schedule Id")
-	flags.StringVar(&self.Schedule.Cron, "cron", "", "Schedule Cron")
-	flags.StringVar(&self.Schedule.Timezone, "tz", "GMT", "Schedule time zone")
-	flags.IntVar(&self.Schedule.StartingDeadlineSeconds, "start-deadline", 0, "Schedule deadline")
-	flags.StringVar(&self.Schedule.ConcurrencyPolicy, "concurrency-policy", "ALLOW", "Schedule concurrency.  One of ALLOW,FORBID,REPLACE")
-	flags.BoolVar(&self.Schedule.Enabled, "enabled",true,"Enable the schedule")
+// FlagSet - The JobSched flags needed to create a new Metronome schedule
+func (theSched *JobSched) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
+	theSched.JobID.FlagSet(flags)
+	flags.StringVar(&theSched.Schedule.ID, "sched-id", "", "Schedule Id")
+	flags.StringVar(&theSched.Schedule.Cron, "cron", "", "Schedule Cron")
+	flags.StringVar(&theSched.Schedule.Timezone, "tz", "GMT", "Schedule time zone")
+	flags.IntVar(&theSched.Schedule.StartingDeadlineSeconds, "start-deadline", 0, "Schedule deadline")
+	flags.StringVar(&theSched.Schedule.ConcurrencyPolicy, "concurrency-policy", "ALLOW", "Schedule concurrency.  One of ALLOW,FORBID,REPLACE")
+	flags.BoolVar(&theSched.Schedule.Enabled, "enabled", true, "Enable the schedule")
 	return flags
 }
-func (self *JobSched) Validate() error {
-	if self.JobId == "" {
+// Validate - validates that schedule and target
+func (theSched *JobSched) Validate() error {
+	if theSched.JobID == "" {
 		return errors.New("Missing JobId in JobScheduleCreate")
-	} else if self.Schedule.ID == "" {
+	} else if theSched.Schedule.ID == "" {
 		return errors.New("Missing SchedId in JobScheduleCreate")
-	} else if self.Schedule.Cron == "" {
+	} else if theSched.Schedule.Cron == "" {
 		return errors.New("Missing Cron in JobScheduleCreate")
-	} else if !In(self.Schedule.ConcurrencyPolicy, []string{"ALLOW", "FORBID", "REPLACE"}) {
+	} else if !In(theSched.Schedule.ConcurrencyPolicy, []string{"ALLOW", "FORBID", "REPLACE"}) {
 		return errors.New("Missing concurrency policy")
-	} else if self.Schedule.StartingDeadlineSeconds < 2 {
+	} else if theSched.Schedule.StartingDeadlineSeconds < 2 {
 		return errors.New("-starting-deadline-seconds must be > 1")
 	}
 

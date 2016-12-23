@@ -7,25 +7,25 @@ import (
 	"strings"
 	//"errors"
 	"encoding/json"
-	. "github.com/adobe-platform/go-metronome/metronome-cli/cli_support"
+	cli "github.com/adobe-platform/go-metronome/metronome-cli/cli_support"
 )
 
-type CommandMap map[string]CommandParse
+type commandMap map[string]cli.CommandParse
 
-var commands CommandMap
+var commands commandMap
 
 // initialize the top level command map
 func init() {
-	commands = CommandMap{
-		"job": CommandParse(new(JobTopLevel)),
-		"run": CommandParse(new(RunsTopLevel)),
-		"schedule": CommandParse(new(SchedTopLevel)),
-		"metrics": CommandParse(new(Metrics)),
-		"ping": CommandParse(new(Ping)),
+	commands = commandMap{
+		"job": cli.CommandParse(new(cli.JobTopLevel)),
+		"run": cli.CommandParse(new(cli.RunsTopLevel)),
+		"schedule": cli.CommandParse(new(cli.SchedTopLevel)),
+		"metrics": cli.CommandParse(new(cli.Metrics)),
+		"ping": cli.CommandParse(new(cli.Ping)),
 	}
 }
 
-func Usage(msg string) {
+func usage(msg string) {
 	if msg != "" {
 		logrus.Errorf(" %s ", msg)
 	}
@@ -53,7 +53,7 @@ GLOBAL OPTIONS:
 
 		`)
 
-	runtime := &Runtime{}
+	runtime := &cli.Runtime{}
 	runtime.Usage(os.Stderr)
 	os.Exit(2)
 }
@@ -61,7 +61,7 @@ func main() {
 	logrus.SetOutput(os.Stderr)
 
 	if len(os.Args) == 1 {
-		Usage("")
+		usage("")
 	}
 	keys := make([]string, 0, len(commands))
 	for k := range commands {
@@ -70,13 +70,13 @@ func main() {
 	index := -1
 	var action string
 	for v, value := range os.Args {
-		if In(value, keys) {
+		if cli.In(value, keys) {
 			index = v
 			action = value
 			break
 		}
 	}
-	runtime := &Runtime{}
+	runtime := &cli.Runtime{}
 	if index != -1 {
 		var commonArgs []string
 		if index > 1 {
@@ -86,11 +86,11 @@ func main() {
 		}
 		logrus.Debugf("commonArgs %+v action: %s\n", commonArgs, action)
 		if _, err := runtime.Parse(commonArgs); err != nil {
-			Usage(err.Error())
+			usage(err.Error())
 		} else if action == "" {
-			Usage("missing action")
+			usage("missing action")
 		} else if commands[action] == nil {
-			Usage(fmt.Sprintf("'%s' command not defined", action))
+			usage(fmt.Sprintf("'%s' command not defined", action))
 		}
 		if runtime.Debug {
 			logrus.SetLevel(logrus.DebugLevel)
@@ -101,7 +101,7 @@ func main() {
 		}
 		logrus.Debugf("executorArgs %+v", executorArgs)
 		if action == "help" {
-			Usage("your help:")
+			usage("your help:")
 		} else if executor, err := commands[action].Parse(executorArgs); err != nil {
 			logrus.Fatalf("%s failed because %+v", action, err)
 		} else {
@@ -132,9 +132,9 @@ func main() {
 		}
 	} else {
 		if len(os.Args) > 1 {
-			Usage("You need to include a verb")
+			usage("You need to include a verb")
 		} else {
-			Usage("Nothing to do.  You need to choose an action\n")
+			usage("Nothing to do.  You need to choose an action\n")
 		}
 	}
 }

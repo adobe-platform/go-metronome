@@ -5,46 +5,54 @@ import (
 	"errors"
 )
 
-//
+// Lightweight types for integrating with flags Value interface
 // Support parsing re-use
 // JobId, RunId, and SchedId are used in many calls.  Those 'types' are never used directly.  Instead they are part of other structs
 //
-// base class used to parse args for many commands requiring `job-id` parsing
-type JobId string
 
-func (self *JobId) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
-	flags.StringVar((*string)(self), "job-id", "", "Job Id")
+// JobID - base type used to parse args for many commands requiring `job-id` parsing
+type JobID string
+
+// FlagSet - provide method for derived types to use common flags
+func (id *JobID) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
+	flags.StringVar((*string)(id), "job-id", "", "Job Id")
 	return flags
 }
-func (self *JobId) Validate() error {
+// Validate - validate state usually done as the last part of flag parsing
+func (id *JobID) Validate() error {
 	logrus.Debugf("JobId.Validate\n")
-	if string(*self) == "" {
+	if string(*id) == "" {
 		return errors.New("job-id required")
 	}
 	return nil
 }
 
-type SchedId string
+// SchedID - lightweight type implementing FlagSet and Validate.  Common Metronome parameter
+type SchedID string
 
-func (self *SchedId) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
-	flags.StringVar((*string)(self), "sched-id", "", "Schedule Id")
+// FlagSet - set up flag for setting schedule id
+func (id *SchedID) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
+	flags.StringVar((*string)(id), "sched-id", "", "Schedule Id")
 	return flags
 }
-func (self *SchedId) Validate() error {
-	if string(*self) == "" {
+// Validate - make sure that the flag was set
+func (id *SchedID) Validate() error {
+	if string(*id) == "" {
 		return errors.New("sched-id required")
 	}
 	return nil
 }
-// RunId is used in several REST calls
-type RunId string
+// RunID - is used in several REST calls
+type RunID string
 
-func (self *RunId) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
-	flags.StringVar((*string)(self), "run-id", "", "Run Id")
+// FlagSet - Set the flag to collect run-id
+func (id *RunID) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
+	flags.StringVar((*string)(id), "run-id", "", "Run Id")
 	return flags
 }
-func (self *RunId) Validate() error {
-	if string(*self) == "" {
+// Validate - that run-id has a non-zero length value
+func (id *RunID) Validate() error {
+	if string(*id) == "" {
 		return errors.New("run-id required")
 	}
 	return nil

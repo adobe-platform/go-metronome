@@ -10,9 +10,13 @@ import (
 	"os"
 )
 
+// RunsTopLevel - top level cli menuing structure
+//  Implements CommandParse and CommandExecute
+//  Parses actions without flags package
 type RunsTopLevel JobTopLevel
 
-func (self *RunsTopLevel) Usage(writer io.Writer) {
+// Usage - CommandParse implementation
+func (theRun *RunsTopLevel) Usage(writer io.Writer) {
 	fmt.Fprintf(writer, "run {start|stop|ls|get} <options>:\n")
 	fmt.Fprintln(writer, `
 	  start <options>  | Start a Job that has a schedule.
@@ -23,20 +27,21 @@ func (self *RunsTopLevel) Usage(writer io.Writer) {
 	  Call run <action> help for more on a sub-command
 	`)
 }
-
-func (self *RunsTopLevel) Parse(args [] string) (exec CommandExec, err error) {
+// Parse - parse the top level `run <action>` menu
+//
+func (theRun *RunsTopLevel) Parse(args [] string) (exec CommandExec, err error) {
 
 	defer func() {
 		if r := recover(); r != nil {
 			buf := new(bytes.Buffer)
 			fmt.Fprintln(buf, r.(error).Error())
-			fmt.Fprintf(buf, "\n %s usage:\n", self.subcommand)
+			fmt.Fprintf(buf, "\n %s usage:\n", theRun.subcommand)
 
-			if self.task != nil {
-				self.task.Usage(buf)
+			if theRun.task != nil {
+				theRun.task.Usage(buf)
 			}
 
-			self.Usage(buf)
+			theRun.Usage(buf)
 			err = errors.New(buf.String())
 		}
 	}()
@@ -44,47 +49,51 @@ func (self *RunsTopLevel) Parse(args [] string) (exec CommandExec, err error) {
 		panic(errors.New("sub command required"))
 	}
 	logrus.Debugf("RunTopLevel args: %+v", args)
-	self.subcommand = args[0]
-	switch self.subcommand {
+	theRun.subcommand = args[0]
+	switch theRun.subcommand {
 	case "ls":
-		self.task = CommandParse(new(RunLs))
+		theRun.task = CommandParse(new(RunLs))
 	case "get":
-		self.task = CommandParse(new(RunStatusJob))
+		theRun.task = CommandParse(new(RunStatusJob))
 	case "start":
-		self.task = CommandParse(new(RunStartJob))
+		theRun.task = CommandParse(new(RunStartJob))
 	case "stop":
-		self.task = CommandParse(new(RunStopJob))
+		theRun.task = CommandParse(new(RunStopJob))
 	case "help", "--help":
-		self.Usage(os.Stderr)
+		theRun.Usage(os.Stderr)
 		return nil, errors.New("run usage")
 	default:
-		return nil, errors.New(fmt.Sprintf("run - don't understand '%s'\n", self.subcommand))
+		return nil, fmt.Errorf("run: unknown action '%s'", theRun.subcommand)
 	}
 	var subcommandArgs []string
 	if len(args) > 1 {
 		subcommandArgs = args[1:]
 	}
-	logrus.Debugf("run %s args: %+v", self.subcommand, subcommandArgs)
-	if exec, err = self.task.Parse(subcommandArgs); err != nil {
+	logrus.Debugf("run %s args: %+v", theRun.subcommand, subcommandArgs)
+	if exec, err = theRun.task.Parse(subcommandArgs); err != nil {
 		panic(err)
 	} else {
 		return exec, err
 	}
 }
 
+// RunLs - Get all the runs for a job via cli
 // GET /v1/jobs/$jobId/runs
-type RunLs JobId
+type RunLs JobID
 
-func (self *RunLs) Usage(writer io.Writer) {
+// Usage - RunLs usage
+func (theRun *RunLs) Usage(writer io.Writer) {
 	flags := flag.NewFlagSet("job ls", flag.ExitOnError)
-	(*JobId)(self).FlagSet(flags)
+	(*JobID)(theRun).FlagSet(flags)
 	flags.SetOutput(writer)
 	flags.PrintDefaults()
 }
-
-func (self *RunLs) Parse(args []string) (_ CommandExec, err error) {
+// Parse - parse flags
+//   - need a job-id
+//   - implements CommandParse
+func (theRun *RunLs) Parse(args []string) (_ CommandExec, err error) {
 	flags := flag.NewFlagSet("run ls", flag.ExitOnError)
-	(*JobId)(self).FlagSet(flags)
+	(*JobID)(theRun).FlagSet(flags)
 	defer func() {
 		if r := recover(); r != nil {
 			buf := new(bytes.Buffer)
@@ -95,29 +104,32 @@ func (self *RunLs) Parse(args []string) (_ CommandExec, err error) {
 	}()
 	if err = flags.Parse(args); err != nil {
 		panic(err)
-	} else if err = (*JobId)(self).Validate(); err != nil {
+	} else if err = (*JobID)(theRun).Validate(); err != nil {
 		panic(err)
 	} else {
-		return self, nil
+		return theRun, nil
 	}
 }
-
-func (self *RunLs) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.Runs(string(*self))
+// Execute the Metronome API
+func (theRun *RunLs) Execute(runtime *Runtime) (interface{}, error) {
+	return runtime.client.Runs(string(*theRun))
 }
-// POST /v1/jobs/$jobId/runs
-type RunStartJob JobId
 
-func (self *RunStartJob) Usage(writer io.Writer) {
+// RunStartJob - cli actuator to run POST /v1/jobs/$jobId/runs
+//   - Really same as JobID but uses different flags
+type RunStartJob JobID
+
+// Usage - Start the job usage
+func (theRun *RunStartJob) Usage(writer io.Writer) {
 	flags := flag.NewFlagSet("run start", flag.ExitOnError)
-	(*JobId)(self).FlagSet(flags)
+	(*JobID)(theRun).FlagSet(flags)
 	flags.SetOutput(writer)
 	flags.PrintDefaults()
 }
-
-func (self *RunStartJob) Parse(args []string) (_ CommandExec, err error) {
+// Parse - Parse the flags
+func (theRun *RunStartJob) Parse(args []string) (_ CommandExec, err error) {
 	flags := flag.NewFlagSet("run start", flag.ExitOnError)
-	(*JobId)(self).FlagSet(flags)
+	(*JobID)(theRun).FlagSet(flags)
 	defer func() {
 		if r := recover(); r != nil {
 			buf := new(bytes.Buffer)
@@ -128,45 +140,52 @@ func (self *RunStartJob) Parse(args []string) (_ CommandExec, err error) {
 	}()
 	if err = flags.Parse(args); err != nil {
 		panic(err)
-	} else if err = (*JobId)(self).Validate(); err != nil {
+	} else if err = (*JobID)(theRun).Validate(); err != nil {
 		panic(err)
 	} else {
-		return self, nil
+		return theRun, nil
 	}
 }
-func (self *RunStartJob) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.StartJob(string(*self))
-}
-// GET  /v1/jobs/$jobId/runs/$runId
-type RunStatusJob struct {
-	JobId
-	RunId
+// Execute - the api against Metronome
+func (theRun *RunStartJob) Execute(runtime *Runtime) (interface{}, error) {
+	return runtime.client.StartJob(string(*theRun))
 }
 
-func (self *RunStatusJob) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
-	self.JobId.FlagSet(flags)
-	self.RunId.FlagSet(flags)
+// RunStatusJob - cli actuator that runs `GET  /v1/jobs/$jobId/runs/$runId`
+type RunStatusJob struct {
+	JobID
+	RunID
+}
+// FlagSet - set up flags to get the status
+func (theRun *RunStatusJob) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
+	theRun.JobID.FlagSet(flags)
+	theRun.RunID.FlagSet(flags)
 	return flags
 }
-func (self *RunStatusJob) Validate() error {
-	if err := self.JobId.Validate(); err != nil {
+// Validate - validate the flags
+func (theRun *RunStatusJob) Validate() error {
+	if err := theRun.JobID.Validate(); err != nil {
 		return err
-	} else if err = self.RunId.Validate(); err != nil {
+	} else if err = theRun.RunID.Validate(); err != nil {
 		return err
 	}
 	return nil
 }
-
-func (self *RunStatusJob) Usage(writer io.Writer) {
+// Usage - run status
+func (theRun *RunStatusJob) Usage(writer io.Writer) {
 	flags := flag.NewFlagSet("run status", flag.ExitOnError)
-	self.FlagSet(flags)
+	theRun.FlagSet(flags)
 	flags.SetOutput(writer)
 	flags.PrintDefaults()
 }
-
-func (self *RunStatusJob) Parse(args []string) (_ CommandExec, err error) {
+// Parse - run-id,job-id
+// 	- status flags.
+//   	- panics returned as error
+//	- implements CommandParse
+//
+func (theRun *RunStatusJob) Parse(args []string) (_ CommandExec, err error) {
 	flags := flag.NewFlagSet("run status", flag.ExitOnError)
-	self.FlagSet(flags)
+	theRun.FlagSet(flags)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -178,28 +197,37 @@ func (self *RunStatusJob) Parse(args []string) (_ CommandExec, err error) {
 	}()
 	if err = flags.Parse(args); err != nil {
 		panic(err)
-	} else if err = self.Validate(); err != nil {
+	} else if err = theRun.Validate(); err != nil {
 		panic(err)
 	} else {
-		return self, nil
+		return theRun, nil
 	}
 }
-func (self *RunStatusJob) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.StatusJob(string(self.JobId), string(self.RunId))
+// Execute - executes the job status against metronome
+func (theRun *RunStatusJob) Execute(runtime *Runtime) (interface{}, error) {
+	return runtime.client.StatusJob(string(theRun.JobID), string(theRun.RunID))
 }
-// POST /v1/jobs/$jobId/runs/$runId/action/stop
+
+// RunStopJob - cli structure facilitating POST /v1/jobs/$jobId/runs/$runId/action/stop
+//  - implements both CommandParse and CommandExecute interfaces
+//  - light-weight override of run status cli structure (same args,flags)
+//  - used via cli to capture, execute:
 type RunStopJob RunStatusJob
 
-func (self *RunStopJob) Usage(writer io.Writer) {
+// Usage - implementation of cli usage needed to RunStatusJob
+func (theRun *RunStopJob) Usage(writer io.Writer) {
 	flags := flag.NewFlagSet("run stop", flag.ExitOnError)
-	(*RunStatusJob)(self).FlagSet(flags)
+	(*RunStatusJob)(theRun).FlagSet(flags)
 	flags.SetOutput(writer)
 	flags.PrintDefaults()
 }
-
-func (self *RunStopJob) Parse(args []string) (_ CommandExec, err error) {
+// Parse - takes cli arguments and assures valid flags are passed to get stop a job (job-id,run-id)
+//   - uses RunStatusJob to process flags but uses itself as the CommandExecute implementation
+//   - Implements CommandParse & CommandExecut
+//   - uses runstatus flags but returns itself as the CommandExecute implementation
+func (theRun *RunStopJob) Parse(args []string) (_ CommandExec, err error) {
 	flags := flag.NewFlagSet("run stop", flag.ExitOnError)
-	(*RunStatusJob)(self).FlagSet(flags)
+	(*RunStatusJob)(theRun).FlagSet(flags)
 	defer func() {
 		if r := recover(); r != nil {
 			buf := new(bytes.Buffer)
@@ -211,11 +239,12 @@ func (self *RunStopJob) Parse(args []string) (_ CommandExec, err error) {
 
 	if err = flags.Parse(args); err != nil {
 		panic(err)
-	} else if err = (*RunStatusJob)(self).Validate(); err != nil {
+	} else if err = (*RunStatusJob)(theRun).Validate(); err != nil {
 		panic(err)
 	}
-	return self, nil
+	return theRun, nil
 }
-func (self *RunStopJob) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.StopJob(string(self.JobId), string(self.RunId))
+// Execute - executes POST /v1/jobs/$jobId/runs/$runId/action/stop
+func (theRun *RunStopJob) Execute(runtime *Runtime) (interface{}, error) {
+	return runtime.client.StopJob(string(theRun.JobID), string(theRun.RunID))
 }

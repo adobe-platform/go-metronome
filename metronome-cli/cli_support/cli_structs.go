@@ -17,33 +17,36 @@ import (
 // the correct command line handling for flag and the real type.  By doing so, it preserves the real types behavior
 // flag.Var calls flag.Value interface of the provided interface{}
 // The following light-weight types implement Value while preserving the Set/String symantics of the `real` type it alias.
-type RunArgs []string
-type NvList map[string]string
-type ConstraintList [] met.Constraint
-type VolumeList [] met.Volume
-type LabelList  met.Labels
-type ArtifactList  []met.Artifact
 
+
+// RunArgs - thin type providing Flags Value implementation for Metronome Run->Args
 // type override to support parsing.  []string alias for met.Run.Args
 // It implements flag.Value via Set/String
+type RunArgs []string
 
+// String - provide string helper
 func (i *RunArgs) String() string {
 	return fmt.Sprintf("%s", *i)
 }
-// The second method is Set(value string) error
+
+// Set - Value interface
 func (i *RunArgs) Set(value string) error {
 	logrus.Debugf("Args.Set %s", value)
 	*i = append(*i, value)
 	return nil
 }
-// type override to support parsing.  LabelList alias' met.Labels
-// It implements flag.Value via Set/String
 
-func (i *LabelList) String() string {
-	return fmt.Sprintf("%s", *i)
+// LabelList - thin type providing Flags Value interface implementaion for Metronome labels ( they become environment variables)
+//   type override to support parsing.  LabelList alias' met.Labels
+//   It implements flag.Value via Set/String
+type LabelList  met.Labels
+
+// String - Value interface implementation used with Flags
+func (labels *LabelList) String() string {
+	return fmt.Sprintf("%s", *labels)
 }
-// The second method is Set(value string) error
-func (lb *LabelList) Set(value string) error {
+// Set - Value interface implementation used with Flags
+func (labels *LabelList) Set(value string) error {
 	logrus.Debugf("LabelList %s", value)
 	v := strings.Split(value, ";")
 	logrus.Debugf("LabelList %+v", v)
@@ -52,80 +55,96 @@ func (lb *LabelList) Set(value string) error {
 		nv := strings.Split(ii, "=")
 		switch strings.ToLower(nv[0]) {
 		case "location":
-			lb.Location = nv[1]
+			labels.Location = nv[1]
 		case "owner":
-			lb.Owner = nv[1]
+			labels.Owner = nv[1]
 		default:
 			return errors.New("Unknown value" + nv[0])
 		}
 	}
-	if lb.Location == ""  && lb.Owner == "" {
+	if labels.Location == ""  && labels.Owner == "" {
 		return errors.New("Missing both location and owner")
 	}
 	return nil
 }
-// type override to support parsing.  env alias' map[string]string
-// It implements flag.Value via Set/String
 
-func (i *NvList) String() string {
-	return fmt.Sprintf("%s", *i)
+// NvList - thin type providing Flags Value interface implementation for items needing map[string]string
+type NvList map[string]string
+
+// String - Value interface implementaion
+func (list *NvList) String() string {
+	return fmt.Sprintf("%s", *list)
 }
-// The second method is Set(value string) error
-func (self *NvList) Set(value string) error {
-	logrus.Debugf("NvList %+v %s", self, value)
+
+// Set - Value interface implementation
+func (list *NvList) Set(value string) error {
+	logrus.Debugf("NvList %+v %s", list, value)
 	nv := strings.Split(value, "=")
 	if len(nv) != 2 {
 		return errors.New("Environment vars should be NAME=VALUE")
 	}
 	logrus.Debugf("NvList %+v", nv)
-	vv := (*self)
+	vv := (*list)
 	vv[nv[0]] = nv[1]
 	return nil
 }
-// ConstraintList
-// type override to support parsing.  ConstraintList alias' []met.Constraint
-// It implements flag.Value via Set/String
 
-func (i *ConstraintList) String() string {
-	return fmt.Sprintf("%s", *i)
+// ConstraintList - thin type providing Flags Value interface implementation for Metronome constraints
+//   type override to support parsing.  ConstraintList alias' []met.Constraint
+//   It implements flag.Value via Set/String
+type ConstraintList [] met.Constraint
+
+// String - Value interface implementation
+func (list *ConstraintList) String() string {
+	return fmt.Sprintf("%s", *list)
 }
-// The second method is Set(value string) error
-func (i *ConstraintList) Set(value string) error {
-	if con, err := met.StrToConstraint(value); err != nil {
+
+// Set - Value interface definition used with Flags
+func (list *ConstraintList) Set(value string) error {
+	con, err := met.StrToConstraint(value)
+	if err != nil {
 		return err
-	} else {
-		*i = ConstraintList(append(*i, *con))
-		return nil
 	}
-}
-// type override to support parsing.  VolumeList alias' []met.Volume
-// It implements flag.Value via Set/String
+	*list = ConstraintList(append(*list, *con))
+	return nil
 
-func (i *VolumeList) String() string {
-	return fmt.Sprintf("%s", *i)
 }
-// The second method is Set(value string) error
-func (i *VolumeList) Set(value string) error {
+
+
+// VolumeList - thin type providing Flags Value interface implementation for Metronome volumes
+type VolumeList [] met.Volume
+
+// String - Value interface implementation
+func (list *VolumeList) String() string {
+	return fmt.Sprintf("%s", *list)
+}
+
+// Set - Value interface implementation
+func (list *VolumeList) Set(value string) error {
 	pieces := strings.Split(value, ":")
 	if len(pieces) == 3 {
 
 	} else if len(pieces) == 2 {
 		pieces = append(pieces, "RO")
 	}
-	if vol, err := met.NewVolume(pieces[0], pieces[1], pieces[2]); err != nil {
+	vol, err := met.NewVolume(pieces[0], pieces[1], pieces[2])
+	if err != nil {
 		return err
-	} else {
-		*i = append(*i, *vol)
 	}
+	*list = append(*list, *vol)
+
 	return nil
 }
-// type override to support parsing.  ArtifactList alias' []met.Artifact
-// It implements flag.Value via Set/String
-func (i *ArtifactList) String() string {
-	return fmt.Sprintf("%s", *i)
+
+// ArtifactList - thin type providing Flags Value interface implementation for Metronome artifacts
+type ArtifactList  []met.Artifact
+
+// String - Value interface implementation
+func (list *ArtifactList) String() string {
+	return fmt.Sprintf("%s", *list)
 }
-// The second method is Set(value string) error
-func (i *ArtifactList) Set(value string) (err error) {
+// Set - Value interface implemention
+func (list *ArtifactList) Set(value string) (err error) {
 	var arty met.Artifact
 
 	for _, pairs := range strings.Split(strings.TrimSpace(value), " ") {
@@ -133,33 +152,34 @@ func (i *ArtifactList) Set(value string) (err error) {
 		kv := strings.SplitN(strings.TrimSpace(pairs), "=", 2)
 		logrus.Debugf("kv=%+v", kv)
 		switch strings.TrimSpace(kv[0]){
-		case "url","uri":
-			if ur, err := url.Parse(strings.TrimSpace(kv[1])); err != nil {
+		case "url", "uri":
+			ur, err := url.Parse(strings.TrimSpace(kv[1]));
+			if err != nil {
 				return err
-			} else {
-				arty.Uri_ = ur.String()
 			}
+			arty.Uri_ = ur.String()
+
 		case "extract":
-			if arty.Extract_,err  = strconv.ParseBool(kv[1]); err != nil {
+			if arty.Extract_, err = strconv.ParseBool(kv[1]); err != nil {
 				return err
 			}
 		case "executable":
-			if arty.Executable_,err = strconv.ParseBool(kv[1]); err != nil{
+			if arty.Executable_, err = strconv.ParseBool(kv[1]); err != nil {
 				return err
 			}
 		case "cache":
-			if arty.Cache_,err = strconv.ParseBool(kv[1]); err != nil {
+			if arty.Cache_, err = strconv.ParseBool(kv[1]); err != nil {
 				return err
 			}
 		default:
-			return errors.New(fmt.Sprintf("Unknown artifact '%s", kv[0]))
+			return fmt.Errorf("Unknown artifact '%s", kv[0])
 		}
 
 	}
 	if arty.Uri_ == "" {
 		return errors.New("You must supply 'uri' for artifact")
 	}
-	*i = append(*i, arty)
+	*list = append(*list, arty)
 
 	return nil
 }

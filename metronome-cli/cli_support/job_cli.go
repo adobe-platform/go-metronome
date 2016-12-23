@@ -14,12 +14,16 @@ import (
 //
 // jobs top level cli parse/execute
 //
+
+// JobTopLevel - Top level type used to provide the `job <action>` functionality.
+//   Implements CommandParse interface
 type JobTopLevel struct {
 	subcommand string
 	task       CommandParse
 }
 
-func (self *JobTopLevel) Usage(writer io.Writer) {
+// Usage - show usage
+func (theJob *JobTopLevel) Usage(writer io.Writer) {
 	fmt.Fprintf(writer, "job {create|delete|update|ls|get|schedules|schedule|help}\n")
 	fmt.Fprintln(writer, `
 	  create  <options>   | creates a Job
@@ -33,16 +37,17 @@ func (self *JobTopLevel) Usage(writer io.Writer) {
 	`)
 
 }
-func (self *JobTopLevel) Parse(args [] string) (exec CommandExec, err error) {
+// Parse - parse top-level commands.
+func (theJob *JobTopLevel) Parse(args [] string) (exec CommandExec, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			buf := new(bytes.Buffer)
 			fmt.Fprintln(buf, r.(error).Error())
-			fmt.Fprintf(buf, "\njob %s usage:\n", self.subcommand)
-			if self.task != nil {
-				self.task.Usage(buf)
+			fmt.Fprintf(buf, "\njob %s usage:\n", theJob.subcommand)
+			if theJob.task != nil {
+				theJob.task.Usage(buf)
 			}
-			self.Usage(buf)
+			theJob.Usage(buf)
 			err = errors.New(buf.String())
 		}
 	}()
@@ -51,43 +56,43 @@ func (self *JobTopLevel) Parse(args [] string) (exec CommandExec, err error) {
 		panic(errors.New("job subcommand required"))
 	}
 	logrus.Debugf("JobTopLevel job args: %+v\n", args)
-	self.subcommand = args[0]
-	switch  self.subcommand{
+	theJob.subcommand = args[0]
+	switch  theJob.subcommand{
 	case "create":
 		// POST /v1/jobs
 		x := CommandParse(new(JobCreateRuntime))
-		self.task = x
+		theJob.task = x
 
 	case "delete":
 		// DELETE /v1/jobs/$jobid
-		self.task = CommandParse(new(JobDelete))
+		theJob.task = CommandParse(new(JobDelete))
 	case "ls":
 		// GET /v1/jobs
-		self.task = CommandParse(new(JobList))
+		theJob.task = CommandParse(new(JobList))
 	case "get":
 		// GET /v1/jobs/$jobId
-		self.task = CommandParse(new(JobGet))
+		theJob.task = CommandParse(new(JobGet))
 	case "update":
 		// PUT /v1/jobs/$jobId
-		self.task = CommandParse(new(JobUpdate))
+		theJob.task = CommandParse(new(JobUpdate))
 	case "schedules":
 		// GET /v1/jobs/$jobId/schedules  []Schedule
-		self.task = CommandParse(new(JobScheduleList))
+		theJob.task = CommandParse(new(JobScheduleList))
 	case "schedule":
-		self.task = CommandParse(new(JobScheduleCreate))
+		theJob.task = CommandParse(new(JobScheduleCreate))
 	case "help", "--help":
-		self.Usage(os.Stderr)
+		theJob.Usage(os.Stderr)
 		return nil, errors.New("job usage")
 	default:
-		return nil, errors.New(fmt.Sprintf("job Don't understand option '%s'\n", self.subcommand))
+		return nil, fmt.Errorf("don't understand option %s", theJob.subcommand)
 	}
 	var subcommandArgs []string
 	if len(args) > 1 {
 		subcommandArgs = args[1:]
 	}
-	logrus.Debugf("job %s args: %+v\n", self.subcommand, subcommandArgs)
+	logrus.Debugf("job %s args: %+v\n", theJob.subcommand, subcommandArgs)
 
-	if exec, err = self.task.Parse(subcommandArgs); err != nil {
+	if exec, err = theJob.task.Parse(subcommandArgs); err != nil {
 		panic(err)
 	} else {
 		return exec, err
@@ -95,151 +100,162 @@ func (self *JobTopLevel) Parse(args [] string) (exec CommandExec, err error) {
 
 }
 
-
-// POST /v1/jobs
+// JobCreateConfig - provides backing structure needed to create a job via the command line.
+//  Maps to many flags
+//  Used in several major command functions: `job create` and `job update`
+//    - Factored to support both
+//  Used with Metronome **POST /v1/jobs**
 type JobCreateConfig struct {
-	JobId
+	JobID
 
-	cpus                    float64
-	disk                    int
-	mem                     int
-	description             string
-	docker_image            string
-	restart_policy          string
-	active_deadline_seconds int
-	constraints             ConstraintList
-	volumes                 VolumeList
-	env                     NvList
-	labels                  LabelList
-	artifacts               ArtifactList
-	args                    RunArgs
-	cmd                     string
-	user                    string
-	maxLaunchDelay          int
-	runNow                  bool
+	cpus                  float64
+	disk                  int
+	mem                   int
+	description           string
+	dockerImage           string
+	restartPolicy         string
+	activeDeadlineSeconds int
+	constraints           ConstraintList
+	volumes               VolumeList
+	env                   NvList
+	labels                LabelList
+	artifacts             ArtifactList
+	args                  RunArgs
+	cmd                   string
+	user                  string
+	maxLaunchDelay        int
+	runNow                bool
 }
-
-func (self *JobCreateConfig) makeJob() (*met.Job, error) {
+// makeJob - construct a metronome job for the structure - usually populated via cli flags
+func (theJob *JobCreateConfig) makeJob() (*met.Job, error) {
 	var container *met.Docker
-	if self.docker_image != "" {
+	if theJob.dockerImage != "" {
 		container = &met.Docker{
-			Image_: self.docker_image,
+			Image_: theJob.dockerImage,
 		}
 	}
-	run, err := met.NewRun(self.cpus, self.disk, self.mem)
+	run, err := met.NewRun(theJob.cpus, theJob.disk, theJob.mem)
 
 	if err != nil {
 		return nil, err
 	}
-	if self.maxLaunchDelay < 1 {
+	if theJob.maxLaunchDelay < 1 {
 		return nil, errors.New("max-launch-delay must be greater than 1")
-	} else {
-		run.SetMaxLaunchDelay(self.maxLaunchDelay)
 	}
-	if len(self.constraints) > 0 {
-		run.SetPlacement(&met.Placement{Constraints_: []met.Constraint(self.constraints)})
+	run.SetMaxLaunchDelay(theJob.maxLaunchDelay)
+
+	if len(theJob.constraints) > 0 {
+		run.SetPlacement(&met.Placement{Constraints_: []met.Constraint(theJob.constraints)})
 	}
-	if len(self.env) > 0 {
-		run.SetEnv(self.env)
+	if len(theJob.env) > 0 {
+		run.SetEnv(theJob.env)
 	}
-	if len(self.args) > 0 {
-		run.SetArgs([]string(self.args))
+	if len(theJob.args) > 0 {
+		run.SetArgs([]string(theJob.args))
 	}
-	if len(self.volumes) > 0 {
-		run.SetVolumes([]met.Volume(self.volumes))
+	if len(theJob.volumes) > 0 {
+		run.SetVolumes([]met.Volume(theJob.volumes))
 	}
-	if len(self.artifacts) > 0 {
-		run.SetArtifacts([]met.Artifact(self.artifacts))
+	if len(theJob.artifacts) > 0 {
+		run.SetArtifacts([]met.Artifact(theJob.artifacts))
 	}
 
 	var description string
-	if self.description != "" {
-		description = self.description
+	if theJob.description != "" {
+		description = theJob.description
 	}
 	var ll *met.Labels
-	if self.labels.Location != "" || self.labels.Owner != "" {
-		ll = (*met.Labels)(&self.labels)
+	if theJob.labels.Location != "" || theJob.labels.Owner != "" {
+		ll = (*met.Labels)(&theJob.labels)
 	}
-	if len(self.restart_policy) > 0 || self.active_deadline_seconds != 0 {
-		if restart, err := met.NewRestart(self.active_deadline_seconds, self.restart_policy); err != nil {
+	if len(theJob.restartPolicy) > 0 || theJob.activeDeadlineSeconds != 0 {
+		restart, err := met.NewRestart(theJob.activeDeadlineSeconds, theJob.restartPolicy)
+		if err != nil {
 			return nil, err
-		} else {
-			run.SetRestart(restart)
 		}
+		run.SetRestart(restart)
+
 	}
-	newJob, err := met.NewJob(string(self.JobId), description, ll, run)
+	newJob, err := met.NewJob(string(theJob.JobID), description, ll, run)
 	if err != nil {
 		return nil, err
 
 	} else if container != nil {
-		newJob.Run().SetDocker(container).SetCmd(self.cmd)
+		newJob.Run().SetDocker(container).SetCmd(theJob.cmd)
 	}
-	logrus.Debugf("JobCreateRuntime: %+v", self)
+	logrus.Debugf("JobCreateRuntime: %+v", theJob)
 	return newJob, nil
 
 }
-
+// JobCreateRuntime - Entity used to create a metronome job
+//  Implements the CommandParse interface
 type JobCreateRuntime struct {
 	JobCreateConfig
 	job           *met.Job
 	disableRunNow bool
 }
-
-func (self *JobCreateRuntime) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
-	if self.env == nil {
-		self.env = make(map[string]string)
+// FlagSet - Flags to setup creating a job.
+//  - Populates JobCreateConfig with values
+//
+func (theJob *JobCreateRuntime) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
+	if theJob.env == nil {
+		theJob.env = make(map[string]string)
 	}
 
-	logrus.Debugf("nvlist: %+v", self.env)
-	flags.StringVar((*string)(&self.JobId), "job-id", "", "Job Id")
-	flags.StringVar(&self.description, "description", "", "Job Description - optional")
-	flags.StringVar((*string)(&self.docker_image), "docker-image", "", "Docker Image")
-	flags.Float64Var(&self.cpus, "cpus", DefaultCPUs, "cpus")
-	flags.IntVar(&self.mem, "memory", DefaultMemory, "memory")
-	flags.IntVar(&self.disk, "disk", DefaultDisk, "disk")
-	flags.StringVar(&self.restart_policy, "restart-policy", "NEVER", "Restart policy on job failure: NEVER or ALWAYS")
-	flags.IntVar(&self.active_deadline_seconds, "restart-active-deadline-seconds", 0, "If the job fails, how long should we try to restart the job. If no value is set, this means forever.")
-	flags.Var(&self.constraints, "constraint", "Add Constraint used to construct Job->Run->[]Constraint")
-	flags.Var(&self.volumes, "volume", "/host:/container:{RO|RW} . Adds Volume passed to metrononome->Job->Run->Volumes. You can call more than once")
-	flags.Var(&self.artifacts, "artifact", `uri=xxx  executable={true|false}  cache={true|false} extract={true|false} executable={true|false}
+	logrus.Debugf("nvlist: %+v", theJob.env)
+	flags.StringVar((*string)(&theJob.JobID), "job-id", "", "Job Id")
+	flags.StringVar(&theJob.description, "description", "", "Job Description - optional")
+	flags.StringVar((*string)(&theJob.dockerImage), "docker-image", "", "Docker Image")
+	flags.Float64Var(&theJob.cpus, "cpus", DefaultCPUs, "cpus")
+	flags.IntVar(&theJob.mem, "memory", DefaultMemory, "memory")
+	flags.IntVar(&theJob.disk, "disk", DefaultDisk, "disk")
+	flags.StringVar(&theJob.restartPolicy, "restart-policy", "NEVER", "Restart policy on job failure: NEVER or ALWAYS")
+	flags.IntVar(&theJob.activeDeadlineSeconds, "restart-active-deadline-seconds", 0, "If the job fails, how long should we try to restart the job. If no value is set, this means forever.")
+	flags.Var(&theJob.constraints, "constraint", "Add Constraint used to construct Job->Run->[]Constraint")
+	flags.Var(&theJob.volumes, "volume", "/host:/container:{RO|RW} . Adds Volume passed to metrononome->Job->Run->Volumes. You can call more than once")
+	flags.Var(&theJob.artifacts, "artifact", `uri=xxx  executable={true|false}  cache={true|false} extract={true|false} executable={true|false}
 	                                cache,extract,executable are optional.  uri is required`)
-	flags.Var(&self.args, "arg", "Adds Arg metrononome->Job->Run->Args. You can call more than once")
-	flags.Var(&self.env, "env", "VAR=VAL . Adds Volume passed on to Job.Run.[]Volumes.  You can call more than once")
-	flags.Var(&self.labels, "label", "Location=xxx; Owner=yyy")
-	flags.StringVar(&self.user, "user", "root", "user to run as")
-	flags.StringVar(&self.cmd, "cmd", "", "Command to run")
-	flags.IntVar(&self.maxLaunchDelay, "max-launch-delay", 900, "Max Launch delay.  minimum 1")
-	if !self.disableRunNow {
-		flags.BoolVar(&self.runNow, "run-now", false, "Run this job now, otherwise it is created as unscheduled")
+	flags.Var(&theJob.args, "arg", "Adds Arg metrononome->Job->Run->Args. You can call more than once")
+	flags.Var(&theJob.env, "env", "VAR=VAL . Adds Volume passed on to Job.Run.[]Volumes.  You can call more than once")
+	flags.Var(&theJob.labels, "label", "Location=xxx; Owner=yyy")
+	flags.StringVar(&theJob.user, "user", "root", "user to run as")
+	flags.StringVar(&theJob.cmd, "cmd", "", "Command to run")
+	flags.IntVar(&theJob.maxLaunchDelay, "max-launch-delay", 900, "Max Launch delay.  minimum 1")
+	if !theJob.disableRunNow {
+		flags.BoolVar(&theJob.runNow, "run-now", false, "Run this job now, otherwise it is created as unscheduled")
 	}
 	return flags
 }
 
-func (self *JobCreateRuntime) Validate() error {
-	if self.JobId == "" {
+// Validate - validate the the structure can be used to create a job
+func (theJob *JobCreateRuntime) Validate() error {
+	if theJob.JobID == "" {
 		return errors.New("Missing JobId")
-	} else if self.cmd == "" && self.docker_image == "" {
+	} else if theJob.cmd == "" && theJob.dockerImage == "" {
 		return errors.New("Need command or docker image")
-	} else if self.cpus <= 0.0 || self.mem <= 0 || self.disk <= 0 {
+	} else if theJob.cpus <= 0.0 || theJob.mem <= 0 || theJob.disk <= 0 {
 		return errors.New("cpus, memory, and disk must all be > 0")
 	}
 	return nil
 }
-func (self *JobCreateRuntime) Usage(writer io.Writer) {
+// Usage - dump flag usage
+func (theJob *JobCreateRuntime) Usage(writer io.Writer) {
 	flags := flag.NewFlagSet("job create", flag.ExitOnError)
-	self.FlagSet(flags)
+	theJob.FlagSet(flags)
 	flags.SetOutput(writer)
 	flags.PrintDefaults()
 }
 
+// JobRunNow - lightweight type to implement similar functionality to job create with the the target of running it immediatelu
+//  - Implement CommandExec
 type JobRunNow struct {
 	job *met.Job
 }
-
-func (self *JobCreateRuntime) Parse(args []string) (exec CommandExec, err error) {
+// Parse -
+func (theJob *JobCreateRuntime) Parse(args []string) (exec CommandExec, err error) {
 	logrus.Debugf("JobCreateRuntime.Parse %+v", args)
 	flags := flag.NewFlagSet("job create", flag.ExitOnError)
-	self.FlagSet(flags)
+	theJob.FlagSet(flags)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -252,49 +268,54 @@ func (self *JobCreateRuntime) Parse(args []string) (exec CommandExec, err error)
 
 	if err = flags.Parse(args); err != nil {
 		panic(err)
-	} else if err = self.Validate(); err != nil {
+	} else if err = theJob.Validate(); err != nil {
 		panic(err)
 	}
-	if self.job, err = self.JobCreateConfig.makeJob(); err != nil {
+	theJob.job, err = theJob.JobCreateConfig.makeJob()
+	if err != nil {
 		return nil, err
-	} else {
-		if self.runNow {
-			return &JobRunNow{job:self.job}, nil
-		} else {
-			return self, nil
-		}
 	}
+	if theJob.runNow {
+		return &JobRunNow{job:theJob.job}, nil
+	}
+	return theJob, nil
+
 }
-func (self *JobRunNow) Execute(runtime *Runtime) (interface{}, error) {
+// Execute - create and execute a job
+func (theJob *JobRunNow) Execute(runtime *Runtime) (interface{}, error) {
 	logrus.Debugf("JobCreateRuntime.Execute %+v", runtime)
-	if _, err := runtime.client.CreateJob(self.job); err != nil {
+	_, err := runtime.client.CreateJob(theJob.job)
+	if err != nil {
 		return nil, err
 
-	} else {
-		return runtime.client.StartJob(self.job.ID_)
 	}
+	return runtime.client.StartJob(theJob.job.ID_)
 }
 
-func (self *JobCreateRuntime) Execute(runtime *Runtime) (interface{}, error) {
+// Execute - create a job
+func (theJob *JobCreateRuntime) Execute(runtime *Runtime) (interface{}, error) {
 	logrus.Debugf("JobCreateRuntime.Execute %+v", runtime)
-	return runtime.client.CreateJob(self.job)
+	return runtime.client.CreateJob(theJob.job)
 }
 
+// JobDelete - Implement CommandParse and CommandExecute
 // DELETE /v1/jobs/$jobId
+type JobDelete JobID
 
-type JobDelete JobId
-
-func (self *JobDelete) Usage(writer io.Writer) {
+// Usage - CommandParse implementation/
+func (theJob *JobDelete) Usage(writer io.Writer) {
 	fmt.Fprintf(writer, "job delete:\n")
 	flags := flag.NewFlagSet("job delete", flag.ExitOnError)
-	(*JobId)(self).FlagSet(flags)
+	(*JobID)(theJob).FlagSet(flags)
 	flags.SetOutput(writer)
 	flags.PrintDefaults()
 }
 
-func (self *JobDelete) Parse(args []string) (exec CommandExec, err error) {
+// Parse - Handle command line flags.
+//  - CommandParse implementation
+func (theJob *JobDelete) Parse(args []string) (exec CommandExec, err error) {
 	flags := flag.NewFlagSet("job delete", flag.ExitOnError)
-	(*JobId)(self).FlagSet(flags)
+	(*JobID)(theJob).FlagSet(flags)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -306,29 +327,33 @@ func (self *JobDelete) Parse(args []string) (exec CommandExec, err error) {
 	}()
 	if err = flags.Parse(args); err != nil {
 		panic(err)
-	} else if err = (*JobId)(self).Validate(); err != nil {
+	} else if err = (*JobID)(theJob).Validate(); err != nil {
 		panic(err)
 	} else {
-		return self, nil
+		return theJob, nil
 	}
 }
-
-func (self *JobDelete) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.DeleteJob((string)(*self))
+// Execute - delete the job
+func (theJob *JobDelete) Execute(runtime *Runtime) (interface{}, error) {
+	return runtime.client.DeleteJob((string)(*theJob))
 }
-// GET /v1/jobs/$jobId
-type JobGet JobId
 
-func (self *JobGet) Usage(writer io.Writer) {
+// JobGet - Get a job via command line.
+//   - Implements CommandParse & CommandExecute interfaces
+//   - GET /v1/jobs/$jobId
+type JobGet JobID
+
+// Usage - CommandParse implementation
+func (theJob *JobGet) Usage(writer io.Writer) {
 	flags := flag.NewFlagSet("job get", flag.ExitOnError)
-	(*JobId)(self).FlagSet(flags)
+	(*JobID)(theJob).FlagSet(flags)
 	flags.SetOutput(writer)
 	flags.PrintDefaults()
 }
-
-func (self *JobGet) Parse(args []string) (exec CommandExec, err error) {
+// Parse - the command line flags
+func (theJob *JobGet) Parse(args []string) (exec CommandExec, err error) {
 	flags := flag.NewFlagSet("job get", flag.ExitOnError)
-	(*JobId)(self).FlagSet(flags)
+	(*JobID)(theJob).FlagSet(flags)
 	defer func() {
 		if r := recover(); r != nil {
 			buf := new(bytes.Buffer)
@@ -339,49 +364,60 @@ func (self *JobGet) Parse(args []string) (exec CommandExec, err error) {
 	}()
 	if err = flags.Parse(args); err != nil {
 		panic(err)
-	} else if err = (*JobId)(self).Validate(); err != nil {
+	} else if err = (*JobID)(theJob).Validate(); err != nil {
 		panic(err)
 	} else {
-		return self, nil
+		return theJob, nil
 	}
 }
-func (self *JobGet) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.GetJob(string(*self))
+// Execute - get the job from metronome
+func (theJob *JobGet) Execute(runtime *Runtime) (interface{}, error) {
+	return runtime.client.GetJob(string(*theJob))
 }
-// GET /v1/jobs
+
+// JobList - no arg type to list all the jobs in the system via command line
+//  - Implements CommandParse/CommandExecute interfaces
+//  - GET /v1/jobs
 type JobList int
 
-func (self *JobList) Usage(writer io.Writer) {
+// Usage - CommandParse implementation
+func (theJob *JobList) Usage(writer io.Writer) {
 	fmt.Fprintf(writer, "job ls\n\tList all jobs\n")
 }
-
-func (self *JobList) Parse([] string) (CommandExec, error) {
-	return self, nil
+// Parse - nothing to parse.  Implements CommandParse
+func (theJob *JobList) Parse([] string) (CommandExec, error) {
+	return theJob, nil
 }
-func (self *JobList) Execute(runtime *Runtime) (interface{}, error) {
-	if jobs, err := runtime.client.Jobs(); err != nil {
+// Execute - get the jobs from Metronome
+func (theJob *JobList) Execute(runtime *Runtime) (interface{}, error) {
+	jobs, err := runtime.client.Jobs()
+	if err != nil {
 		return nil, err
-	} else {
-		return jobs, nil
 	}
+	return jobs, nil
+
 }
-// PUT /v1/jobs/$jobId
+// JobUpdate - update a job via the command line
+//  - Implements CommandParse/CommandExecute
+// -  PUT /v1/jobs/$jobId
 type JobUpdate JobCreateRuntime
 
-func (self *JobUpdate) Usage(writer io.Writer) {
-	self.disableRunNow = true
+// Usage - CommandParse implementation
+func (theJob *JobUpdate) Usage(writer io.Writer) {
+	theJob.disableRunNow = true
 	flags := flag.NewFlagSet("job update", flag.ExitOnError)
 	// must cast to JobRuntime or go chooses JobId.Flagset...
-	(*JobCreateRuntime)(self).FlagSet(flags)
+	(*JobCreateRuntime)(theJob).FlagSet(flags)
 	flags.SetOutput(writer)
 	flags.PrintDefaults()
 }
 
-// JobUpdate - implement CommandParse
-func (self *JobUpdate) Parse(args [] string) (_ CommandExec, err error) {
-	self.disableRunNow = true
+// Parse - implement CommandParse.
+//   Use underlying (actual) JobCreateRuntime
+func (theJob *JobUpdate) Parse(args [] string) (_ CommandExec, err error) {
+	theJob.disableRunNow = true
 	flags := flag.NewFlagSet("job update", flag.ExitOnError)
-	(*JobCreateRuntime)(self).FlagSet(flags)
+	(*JobCreateRuntime)(theJob).FlagSet(flags)
 	defer func() {
 		if r := recover(); r != nil {
 			buf := new(bytes.Buffer)
@@ -392,17 +428,18 @@ func (self *JobUpdate) Parse(args [] string) (_ CommandExec, err error) {
 	}()
 	if err = flags.Parse(args); err != nil {
 		panic(err)
-	} else if err = (*JobCreateRuntime)(self).Validate(); err != nil {
+	} else if err = (*JobCreateRuntime)(theJob).Validate(); err != nil {
 		panic(err)
 	} else {
-		if self.job, err = self.JobCreateConfig.makeJob(); err != nil {
+		theJob.job, err = theJob.JobCreateConfig.makeJob()
+		if err != nil {
 			return nil, err
-		} else {
-			return self, nil
 		}
+		return theJob, nil
+
 	}
 }
-// JobUpdate - implement CommandExec
-func (self *JobUpdate) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.UpdateJob(string(self.JobId), self.job)
+// Execute - implement CommandExec
+func (theJob *JobUpdate) Execute(runtime *Runtime) (interface{}, error) {
+	return runtime.client.UpdateJob(string(theJob.JobID), theJob.job)
 }

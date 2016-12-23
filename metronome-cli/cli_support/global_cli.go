@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 )
+
 //Runtime represents the global options passed to all CommandExec.Execute methods.
 //In particular, it keeps the metronome client and the other useful global options
 type Runtime struct {
@@ -24,49 +25,54 @@ type Runtime struct {
 //
 // Global flags are kept in 'Runtime'.  main takes care of sending Parse the correct list of args
 //
-func (self *Runtime) FlagSet(name  string) *flag.FlagSet {
+
+// FlagSet - Set up the flags
+func (runtime *Runtime) FlagSet(name  string) *flag.FlagSet {
 	flags := flag.NewFlagSet(name, flag.ExitOnError)
-	flags.StringVar(&self.httpAddr, "metronome-url", DefaultHTTPAddr, "Set the Metronome address")
-	flags.BoolVar(&self.Debug, "debug", false, "Turn on debug")
-	flags.StringVar(&self.authToken, "authorization", "", "Authorization token")
-	flags.StringVar(&self.user, "user", "", "user")
-	flags.StringVar(&self.pw, "password", "", "password")
+	flags.StringVar(&runtime.httpAddr, "metronome-url", DefaultHTTPAddr, "Set the Metronome address")
+	flags.BoolVar(&runtime.Debug, "debug", false, "Turn on debug")
+	flags.StringVar(&runtime.authToken, "authorization", "", "Authorization token")
+	flags.StringVar(&runtime.user, "user", "", "user")
+	flags.StringVar(&runtime.pw, "password", "", "password")
 	return flags
 }
-func (self *Runtime) Usage(writer io.Writer) {
-	flags := self.FlagSet("<global options help>")
+// Usage - emit the usage
+func (runtime *Runtime) Usage(writer io.Writer) {
+	flags := runtime.FlagSet("<global options help>")
 	flags.SetOutput(writer)
 	flags.PrintDefaults()
 }
-func (self *Runtime) Parse(args []string) (CommandExec, error) {
-	flags := self.FlagSet("<global options> ")
+// Parse - Process command line arguments
+func (runtime *Runtime) Parse(args []string) (CommandExec, error) {
+	flags := runtime.FlagSet("<global options> ")
 	if err := flags.Parse(args); err != nil {
 		return nil, err
 	}
 	config := met.NewDefaultConfig()
-	config.URL = self.httpAddr
-	if self.authToken != ""{
-		if strings.Contains(self.authToken,"token=") {
-			config.AuthToken = self.authToken
+	config.URL = runtime.httpAddr
+	if runtime.authToken != "" {
+		if strings.Contains(runtime.authToken, "token=") {
+			config.AuthToken = runtime.authToken
 		} else {
-			config.AuthToken = fmt.Sprintf("token=%s", self.authToken)
+			config.AuthToken = fmt.Sprintf("token=%s", runtime.authToken)
 		}
 	}
-	if self.user != "" {
-		config.User = self.user
+	if runtime.user != "" {
+		config.User = runtime.user
 	}
-	if self.pw != "" {
-		config.Pw = self.pw
+	if runtime.pw != "" {
+		config.Pw = runtime.pw
 	}
-	if self.Debug {
-		config.Debug = self.Debug
+	if runtime.Debug {
+		config.Debug = runtime.Debug
 	}
 
-	if client, err := met.NewClient(config); err != nil {
+	client, err := met.NewClient(config)
+	if err != nil {
 		return nil, err
-	} else {
-		self.client = client
 	}
+	runtime.client = client
+
 	logrus.Debugf("Runtime <global flags> ok")
 	// No exec returned
 	return nil, nil
