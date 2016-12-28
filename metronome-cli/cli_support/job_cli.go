@@ -131,7 +131,7 @@ func (theJob *JobCreateConfig) makeJob() (*met.Job, error) {
 	var container *met.Docker
 	if theJob.dockerImage != "" {
 		container = &met.Docker{
-			Image_: theJob.dockerImage,
+			Image: theJob.dockerImage,
 		}
 	}
 	run, err := met.NewRun(theJob.cpus, theJob.disk, theJob.mem)
@@ -145,7 +145,7 @@ func (theJob *JobCreateConfig) makeJob() (*met.Job, error) {
 	run.SetMaxLaunchDelay(theJob.maxLaunchDelay)
 
 	if len(theJob.constraints) > 0 {
-		run.SetPlacement(&met.Placement{Constraints_: []met.Constraint(theJob.constraints)})
+		run.SetPlacement(&met.Placement{Constraints: []met.Constraint(theJob.constraints)})
 	}
 	if len(theJob.env) > 0 {
 		run.SetEnv(theJob.env)
@@ -181,7 +181,7 @@ func (theJob *JobCreateConfig) makeJob() (*met.Job, error) {
 		return nil, err
 
 	} else if container != nil {
-		newJob.Run().SetDocker(container).SetCmd(theJob.cmd)
+		newJob.GetRun().SetDocker(container).SetCmd(theJob.cmd)
 	}
 	logrus.Debugf("JobCreateRuntime: %+v", theJob)
 	return newJob, nil
@@ -289,7 +289,7 @@ func (theJob *JobRunNow) Execute(runtime *Runtime) (interface{}, error) {
 		return nil, err
 
 	}
-	return runtime.client.StartJob(theJob.job.ID_)
+	return runtime.client.StartJob(theJob.job.ID)
 }
 
 // Execute - create a job

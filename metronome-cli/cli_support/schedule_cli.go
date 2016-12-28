@@ -220,7 +220,7 @@ func (theSched *JobScheduleList) Parse(args [] string) (_ CommandExec, err error
 	} else {
 		return theSched, nil
 	}
-	return theSched, nil
+//	return theSched, nil
 }
 // Execute - implement CommandExec
 //  - Runs GET /v1/jobs/$jobId/schedules

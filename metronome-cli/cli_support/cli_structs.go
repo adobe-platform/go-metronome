@@ -157,18 +157,18 @@ func (list *ArtifactList) Set(value string) (err error) {
 			if err != nil {
 				return err
 			}
-			arty.Uri_ = ur.String()
+			arty.URI = ur.String()
 
 		case "extract":
-			if arty.Extract_, err = strconv.ParseBool(kv[1]); err != nil {
+			if arty.Extract, err = strconv.ParseBool(kv[1]); err != nil {
 				return err
 			}
 		case "executable":
-			if arty.Executable_, err = strconv.ParseBool(kv[1]); err != nil {
+			if arty.Executable, err = strconv.ParseBool(kv[1]); err != nil {
 				return err
 			}
 		case "cache":
-			if arty.Cache_, err = strconv.ParseBool(kv[1]); err != nil {
+			if arty.Cache, err = strconv.ParseBool(kv[1]); err != nil {
 				return err
 			}
 		default:
@@ -176,7 +176,7 @@ func (list *ArtifactList) Set(value string) (err error) {
 		}
 
 	}
-	if arty.Uri_ == "" {
+	if arty.URI == "" {
 		return errors.New("You must supply 'uri' for artifact")
 	}
 	*list = append(*list, arty)

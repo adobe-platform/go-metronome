@@ -169,74 +169,74 @@ var _ = Describe("Jobs", func() {
 
 			jobs, _ := client.Jobs()
 			//var jj Job = (*jobs)[0]
-			Expect((*jobs)[0]).To(Equal(Job{ID_: "job.with.arguments",
-				Description_: "Job with arguments",
-				Labels_: &Labels{
+			Expect((*jobs)[0]).To(Equal(Job{ID: "job.with.arguments",
+				Description: "Job with arguments",
+				Labels: &Labels{
 					Location: "olympus",
 					Owner: "zeus",
 				},
-				Run_: &Run{
-					Artifacts_: []Artifact{
-						Artifact{Uri_: "http://foo.test.com/application.zip", Extract_: true, Executable_ :true, Cache_: false},
+				Run: &Run{
+					Artifacts: []Artifact{
+						Artifact{URI: "http://foo.test.com/application.zip", Extract: true, Executable :true, Cache: false},
 					},
-					Cmd_: "nuke --dry --master local",
-					Args_:[]string{
+					Cmd: "nuke --dry --master local",
+					Args:[]string{
 						"nuke",
 						"--dry",
 						"--master",
 						"local",
 					},
-					Cpus_: 1.5,
-					Mem_: 128,
-					Disk_: 32,
-					Docker_ : &Docker{
-						Image_: "foo/bla:test",
+					Cpus: 1.5,
+					Mem: 128,
+					Disk: 32,
+					Docker : &Docker{
+						Image: "foo/bla:test",
 					},
-					Env_:  map[string]string{
+					Env:  map[string]string{
 						"MON": "test",
 						"CONNECT": "direct",
 					},
-					MaxLaunchDelay_: 3600,
-					Placement_: &Placement{
-						Constraints_: []Constraint{
-							Constraint{Attribute_: "rack", Operator_: EQ, Value_: "rack-2"} },
+					MaxLaunchDelay: 3600,
+					Placement: &Placement{
+						Constraints: []Constraint{
+							Constraint{Attribute: "rack", Operator: EQ, Value: "rack-2"} },
 
 					},
-					Restart_: &Restart{
-						ActiveDeadlineSeconds_: 120, Policy_: "NEVER",
+					Restart: &Restart{
+						ActiveDeadlineSeconds: 120, Policy: "NEVER",
 
 					},
-					User_: "root",
-					Volumes_: []Volume{
-						Volume{Mode_:RW, HostPath_:"/etc/guest", ContainerPath_: "/mnt/test" },
+					User: "root",
+					Volumes: []Volume{
+						Volume{Mode:RW, HostPath:"/etc/guest", ContainerPath: "/mnt/test" },
 					},
 				},
 			}))
 
 			Expect((*jobs)[1]).To(Equal(
-				Job{Description_: "Job without arguments",
-					ID_: "job.without.arguments",
-					Labels_: &Labels{
+				Job{Description: "Job without arguments",
+					ID: "job.without.arguments",
+					Labels: &Labels{
 						Location: "olympus",
 						Owner: "zeus",
 					},
-					Run_: &Run{Cmd_: "/usr/local/bin/dcos-tests --debug --term-wait 20 --http-addr :8095",
-						Cpus_: 0.5,
-						Disk_: 128,
-						Docker_: &Docker{
-							Image_: "f4tq/dcos-tests:v0.31",
+					Run: &Run{Cmd: "/usr/local/bin/dcos-tests --debug --term-wait 20 --http-addr :8095",
+						Cpus: 0.5,
+						Disk: 128,
+						Docker: &Docker{
+							Image: "f4tq/dcos-tests:v0.31",
 						},
-						Env_:   map[string]string{
+						Env:   map[string]string{
 							"MON": "test",
 							"CONNECT": "direct",
 						},
-						MaxLaunchDelay_: 3600,
-						Mem_: 32,
-						Restart_: &Restart{
-							ActiveDeadlineSeconds_: 120,
-							Policy_: "NEVER",
+						MaxLaunchDelay: 3600,
+						Mem: 32,
+						Restart: &Restart{
+							ActiveDeadlineSeconds: 120,
+							Policy: "NEVER",
 						},
-						User_: "root",
+						User: "root",
 					},
 
 				}))
@@ -262,9 +262,9 @@ var _ = Describe("Jobs", func() {
 			rez, err := client.DeleteJob(jobName)
 			Expect(err).ShouldNot(HaveOccurred())
 			tt := rez.(Job)
-			Expect(tt.ID_).To(Equal(allJobs[0].ID_))
-			Expect(tt.Labels_.Location).To(Equal(allJobs[0].Labels().Location))
-			Expect(tt.Labels_.Owner).To(Equal(allJobs[0].Labels().Owner))
+			Expect(tt.ID).To(Equal(allJobs[0].ID))
+			Expect(tt.Labels.Location).To(Equal(allJobs[0].GetLabels().Location))
+			Expect(tt.Labels.Owner).To(Equal(allJobs[0].GetLabels().Owner))
 			//			Expect(tt).Should(Equal(allJobs[0])) //To(Succeed())
 			Expect(server.ReceivedRequests()).To(HaveLen(2))
 		})

@@ -5,79 +5,86 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-
 )
 
 var whitespaceRe = regexp.MustCompile(`\s+`)
 
-var constraintViol = errors.New("Bad constraint.  Must be EQ,LIKE,UNLIKE")
-var mountViol = errors.New("Mount point must designate RW,RO")
-var containerPathViol = errors.New("Bad container path.  Must match `^/[^/].*$`")
+var errConstraintViol = errors.New("Bad constraint.  Must be EQ,LIKE,UNLIKE")
+var errMountViol = errors.New("Mount point must designate RW,RO")
+var errContainerPathViol = errors.New("Bad container path.  Must match `^/[^/].*$`")
 
 func required(msg string) error {
 	if len(msg) == 0 {
 		return errors.New("Missing Required message")
 	}
-	return errors.New(fmt.Sprintf("%s is required by metronome api", msg))
+	return fmt.Errorf("%s is required by metronome api", msg)
 }
 
 
-// Jobs is a slice of jobs
+// Artifact - Metronome Artifact
 type Artifact struct {
-	Uri_        string `json:"uri"`
-	Executable_ bool   `json:"executable"`
-	Extract_    bool   `json:"extract"`
-	Cache_      bool   `json:"cache"`
+	URI        string `json:"uri"`
+	Executable bool   `json:"executable"`
+	Extract    bool   `json:"extract"`
+	Cache      bool   `json:"cache"`
 }
-
-func (self *Artifact) Uri() string {
-	return self.Uri_
+// GetURI - return string copy
+func (theArtifact *Artifact) GetURI() string {
+	return theArtifact.URI
 }
-func (self *Artifact) Executable() bool {
-	return self.Executable_
+// IsExecutable - is the artifact executable
+func (theArtifact *Artifact) IsExecutable() bool {
+	return theArtifact.Executable
 }
-func (self *Artifact) Extract() bool {
-	return self.Extract_
+// ShouldExtract - does the artifact need to be extracted
+func (theArtifact *Artifact) ShouldExtract() bool {
+	return theArtifact.Extract
 }
-func (self *Artifact) Cache() bool {
-	return self.Cache_
+// ShouldCache - should the artifact be cached
+func (theArtifact *Artifact) ShouldCache() bool {
+	return theArtifact.Cache
 }
-
+// Docker - metronome limited docker image
 type Docker struct {
-	Image_ string `json:"image"`
+	Image string `json:"image"`
 }
 
+// NewDockerImage  - create a new image
 func NewDockerImage(image string) (*Docker, error) {
 	if len(image) == 0 {
 		return nil, required("Docker.Image requires a value")
 	}
-	return &Docker{Image_: image}, nil
+	return &Docker{Image: image}, nil
+}
+// GetImage - the docker image
+func (docker *Docker) GetImage() string {
+	return docker.Image
 }
 
-func (self *Docker) Image() string {
-	return self.Image_
-}
+// constraint support
 
-// constraint
-
+// Operator - constrain operator values
 type Operator int
 
 const (
+	// EQ - Valid Operator values
 	EQ Operator = 1 + iota
+	// LIKE - operator
 	LIKE
+	// UNLIKE - operator
 	UNLIKE
 )
 
-var constraint_operators = [...]string{
+var constraintOperators = [...]string{
 	"EQ",
 	"LIKE",
 	"UNLIKE",
 }
-
-func (self *Operator) String() string {
-	return constraint_operators[int(*self) - 1]
+// String - string rep of operator
+func (theOp *Operator) String() string {
+	return constraintOperators[int(*theOp) - 1]
 }
-func decode_operator(op string) (Operator, error) {
+func decodeOperator(op string) (Operator, error) {
 	switch op {
 	case "EQ":
 		return EQ, nil
@@ -87,141 +94,154 @@ func decode_operator(op string) (Operator, error) {
 		return UNLIKE, nil
 	default:
 		fmt.Printf("Operator.UnmarshallJSON - unknown value '%s'\n", op)
-		return -1,constraintViol
+		return -1, errConstraintViol
 	}
 
 }
-func (self *Operator) UnmarshalJSON(raw []byte) error {
+// UnmarshalJSON - hand json unmarshalling
+func (theOp *Operator) UnmarshalJSON(raw []byte) error {
 	var s string
 	if err := json.Unmarshal(raw, &s); err != nil {
 		return err
 	}
-	if op, err := decode_operator(s); err != nil {
+	op, err := decodeOperator(s)
+	if err != nil {
 		return err
-	} else {
-		*self = op
 	}
+	*theOp = op
+
 	return nil
 }
-func (self *Operator) MarshalJSON() ([]byte, error) {
-	s := self.String()
+// MarshalJSON - implement json interface for marshalling json
+func (theOp *Operator) MarshalJSON() ([]byte, error) {
+	s := theOp.String()
 	return json.Marshal(s)
 	//return []byte(fmt.Sprintf("\"%s\"", s)), nil
 }
-
+// Constraint - Metronome constraint
 type Constraint struct {
-	Attribute_ string `json:"attribute"`
+	Attribute string `json:"attribute"`
 	// operator is EQ, LIKE,UNLIKE
-	Operator_  Operator `json:"operator"`
-	Value_     string   `json:"value"`
+	Operator  Operator `json:"operator"`
+	Value     string   `json:"value"`
 }
-
+// StrToConstraint - takes constraint as described in Metronome documentation
 func StrToConstraint(cli string) (*Constraint, error) {
 	args := whitespaceRe.Split(cli, -1)
 	if len(args) != 3 {
 		return nil, errors.New("Not enough constraint args `attribute` {EQ|LIKE} value")
 	}
-	if op, err := decode_operator(args[1]); err != nil {
+	op, err := decodeOperator(args[1])
+	if err != nil {
 		return nil, err
-	} else {
-		return NewConstraint(args[0], op, args[2])
 	}
-
+	return NewConstraint(args[0], op, args[2])
 }
-
+// NewConstraint - create Metronome constraint
 func NewConstraint(attribute string, op Operator, value string) (*Constraint, error) {
 	if attribute == "" {
 		return nil, required("Constraint.attribute")
 	}
-	return &Constraint{Attribute_: attribute, Operator_: op, Value_: value}, nil
+	return &Constraint{Attribute: attribute, Operator: op, Value: value}, nil
 }
-
-func (self *Constraint) Attribute() string {
-	return self.Attribute_
+// GetAttribute - accessor
+func (theConstraint *Constraint) GetAttribute() string {
+	return theConstraint.Attribute
 }
-func (self *Constraint) Operator() Operator {
-	return self.Operator_
+// GetOperator - accessor
+func (theConstraint *Constraint) GetOperator() Operator {
+	return theConstraint.Operator
 }
-func (self *Constraint) Value() string {
-	return self.Value_
+// GetValue - accessor
+func (theConstraint *Constraint) GetValue() string {
+	return theConstraint.Value
 }
-
+// Placement - Metronome placement
 type Placement struct {
-	Constraints_ []Constraint `json:"constraints"`
+	Constraints []Constraint `json:"constraints"`
+}
+// GetConstraints - return constraints
+func (thePlacement *Placement) GetConstraints() ([]Constraint, error) {
+	return thePlacement.Constraints, nil
 }
 
-func (self *Placement) Constraints() ([]Constraint, error) {
-	return self.Constraints_, nil
-}
+//
+// volume types
+//
 
-// volumes
-
+// MountMode - type for constraining json values to those spec'd in metronome api
 type MountMode int
+
+// ContainerPath - type for contraining json values to limited paths spec'd in metronome api
 type ContainerPath string
 
 const (
+	// RO - read-only mount
 	RO MountMode = 1 + iota
+	// RW - read/write mount
 	RW
 )
 
-var mount_modes = [...]string{
+var mountModes = [...]string{
 	"RO",
 	"RW",
 }
-
-func (self MountMode) String() string {
-	return mount_modes[int(self) - 1]
+// String - stringrep
+func (mm MountMode) String() string {
+	return mountModes[int(mm) - 1]
 }
-func (self *MountMode) MarshalJSON() ([]byte, error) {
-	//s := self.String()
-	s := self.String()
+
+// MarshalJSON - json interface requirement
+func (mm *MountMode) MarshalJSON() ([]byte, error) {
+	s := mm.String()
 	return json.Marshal(s)
-	//	return []byte(fmt.Sprintf("\"%s\"", mount_modes[int(*self) - 1])), nil
 }
 
-func decode_mount(mode string) (MountMode, error) {
+func decodeMount(mode string) (MountMode, error) {
 	switch mode {
 	case "RO":
-		return RO,nil
+		return RO, nil
 	case "RW":
-		return RW,nil
+		return RW, nil
 	default:
-		return -1,mountViol
+		return -1, errMountViol
 	}
 
 }
-func (self *MountMode) UnmarshalJSON(raw []byte) error {
+// UnmarshalJSON - json interface implementation. Ensure we have a valid mount value
+func (mm *MountMode) UnmarshalJSON(raw []byte) error {
 	var s string
 	if err := json.Unmarshal(raw, &s); err != nil {
 		return err
 	}
-	if mode, err := decode_mount(s); err != nil {
+	mode, err := decodeMount(s)
+	if err != nil {
 		return err
-	} else {
-		*self = mode
 	}
+	*mm = mode
+
 	return nil
 }
-
-func (self *ContainerPath) MarshalJSON() ([]byte, error) {
-	s := string(*self)
+// MarshalJSON - json interface implementation
+func (cp *ContainerPath) MarshalJSON() ([]byte, error) {
+	s := string(*cp)
 	return json.Marshal(s)
 }
-
-func (self *ContainerPath) UnmarshalJSON(raw []byte) error {
+// UnmarshalJSON - json interface implementation.  ensure valid path as spec'd by metronome api
+func (cp *ContainerPath) UnmarshalJSON(raw []byte) error {
 
 	// byte must be unmarshalled as a string otherwise there are cases where the quotes will bleed
 	// through
 	var s string
 	json.Unmarshal(raw, &s)
 	if _, err := regexp.MatchString("^/[^/].*$", s); err != nil {
-		return containerPathViol
+		return errContainerPathViol
 	}
 
-	*self = ContainerPath(s)
+	*cp = ContainerPath(s)
 	return nil
 }
-
+// NewContainerPath - create a new container path that's checked for validity per Metronome's doc
 func NewContainerPath(path string) (self ContainerPath, err error) {
 	if _, err = regexp.MatchString("^/[^/].*$", path); err != nil {
 		return "", err
@@ -231,198 +251,189 @@ func NewContainerPath(path string) (self ContainerPath, err error) {
 	return vg, nil
 
 }
-
+// Volume - structure representing a Metronome Volume validated types
 type Volume struct {
 	// minlength 1; pattern: ^/[^/].*$
-	ContainerPath_ ContainerPath `json:"containerPath"`
-	HostPath_      string        `json:"hostPath"`
+	ContainerPath ContainerPath `json:"containerPath"`
+	HostPath      string        `json:"hostPath"`
 	// Values: RW,RO
-	Mode_          MountMode `json:"mode"`
+	Mode          MountMode `json:"mode"`
 }
-
-func (self *Volume) ContainerPath() (ContainerPath, error) {
-	return self.ContainerPath_, nil
-}
-func (self *Volume) HostPath() (string, error) {
-	return self.HostPath_, nil
-}
-func (self *Volume) Mode() (MountMode, error) {
-	return self.Mode_, nil
-}
-
-func NewVolume(raw_path string, hostPath string, modestr string) (*Volume, error) {
-	if mode, err := decode_mount(modestr); err != nil {
+// NewVolume - creates a new volume from raw strings
+func NewVolume(rawPath string, hostPath string, modestr string) (*Volume, error) {
+	mode, err := decodeMount(modestr);
+	if err != nil {
 		return nil, err
-	} else {
-		vol := Volume{Mode_: mode, HostPath_:hostPath}
-		// ensure valid path
-		if cpath, err := NewContainerPath(raw_path); err != nil {
-			return nil, err
-		} else {
-			vol.ContainerPath_ = cpath
-		}
-		if vol.HostPath_ == "" {
-			return nil, required("host path")
-		}
-		return &vol, nil
 	}
-}
+	vol := Volume{Mode: mode, HostPath:hostPath}
+	// ensure valid path
+	cpath, err := NewContainerPath(rawPath);
+	if err != nil {
+		return nil, err
+	}
+	vol.ContainerPath = cpath
 
+	if vol.HostPath == "" {
+		return nil, required("host path")
+	}
+	return &vol, nil
+
+}
+// Restart - structure representing a Metronome structure
 type Restart struct {
-	ActiveDeadlineSeconds_ int    `json:"activeDeadlineSeconds"`
-	Policy_                string `json:"policy"`
+	ActiveDeadlineSeconds int    `json:"activeDeadlineSeconds"`
+	Policy                string `json:"policy"`
 }
-
-func (self *Restart) ActiveDeadlineSeconds() int {
-	return self.ActiveDeadlineSeconds_
-}
-
-func (self *Restart) Policy() string {
-	return self.Policy_
-}
-
+// NewRestart - create a valid Restart policy
 func NewRestart(activeDeadlineSeconds int, policy string) (*Restart, error) {
 	if len(policy) == 0 {
 		return nil, required("length(Restart.policy)>0")
-	} else if !(policy=="NEVER" || policy == "ON_FAILURE") {
-		return nil,errors.New(fmt.Sprintf("Policy must be 'ON_FAILURE' or 'NEVER' not %s",policy))
+	} else if !(policy == "NEVER" || policy == "ON_FAILURE") {
+		return nil, fmt.Errorf("Policy must be 'ON_FAILURE' or 'NEVER' not %s", policy)
 	}
-	return &Restart{ActiveDeadlineSeconds_: activeDeadlineSeconds, Policy_: policy}, nil
+	return &Restart{ActiveDeadlineSeconds: activeDeadlineSeconds, Policy: policy}, nil
 }
-
+// Run - composite structure representing Metronone run
 type Run struct {
-	Artifacts_      []Artifact  `json:"artifacts,omitempty"`
-	Cmd_            string      `json:"cmd,omitempty"`
+	Artifacts []Artifact  `json:"artifacts,omitempty"`
+	Cmd string      `json:"cmd,omitempty"`
 
-	Args_           []string          `json:"args,omitempty"`
-	Cpus_           float64           `json:"cpus"`
-	Mem_            int               `json:"mem"`
-	Disk_           int               `json:"disk"`
-	Docker_         *Docker           `json:"docker,omitempty"`
-	Env_            map[string]string `json:"env,omitempty"`
-	MaxLaunchDelay_ int               `json:"maxLaunchDelay"`
-	Placement_      *Placement        `json:"placement,omitempty"`
-	Restart_        *Restart          `json:"restart,omitempty"`
-	User_           string            `json:"user,omitempty"`
-	Volumes_        []Volume         `json:"volumes"`
-}
-
-/*
-func (self *Run) String() string {
-	rez := fmt.Sprint("cpus: %f disk: %d mem: %d\n", self.Cpus_, self.Disk_, self.Mem_)
-	return rez
-}*/
-
-func (self *Run) Artifacts() []Artifact {
-	return self.Artifacts_
+	Args []string          `json:"args,omitempty"`
+	Cpus float64           `json:"cpus"`
+	Mem int               `json:"mem"`
+	Disk int               `json:"disk"`
+	Docker *Docker           `json:"docker,omitempty"`
+	Env map[string]string `json:"env,omitempty"`
+	MaxLaunchDelay int               `json:"maxLaunchDelay"`
+	Placement *Placement        `json:"placement,omitempty"`
+	Restart *Restart          `json:"restart,omitempty"`
+	User string            `json:"user,omitempty"`
+	Volumes []Volume         `json:"volumes"`
 }
 
-func (self *Run) SetArtifacts(artifacts []Artifact) *Run {
-	self.Artifacts_ = artifacts
-	return self
+// GetArtifacts - accessor returning Artifacts
+func (runner *Run) GetArtifacts() []Artifact {
+	return runner.Artifacts
+}
+// SetArtifacts - set Artifacts returning pointer to Run so they can be setters can be chained together
+func (runner *Run) SetArtifacts(artifacts []Artifact) *Run {
+	runner.Artifacts = artifacts
+	return runner
+}
+// GetCmd - accessor for the cmd to run
+func (runner *Run) GetCmd() string {
+	return runner.Cmd
+}
+// SetCmd - set the command to run
+func (runner *Run) SetCmd(cmd string) *Run {
+	runner.Cmd = cmd
+	return runner
+}
+// GetArgs - accessor returning the list of arguments
+func (runner *Run) GetArgs() *[]string {
+	return &runner.Args
+}
+// AddArg - appends an argument to the list
+func (runner *Run) AddArg(item string) {
+	runner.Args = append(runner.Args, item)
+}
+// SetArgs - replace the entire argument list
+func (runner *Run) SetArgs(newargs [] string) *Run {
+	runner.Args = newargs
+	return runner
+}
+// GetCpus - the number of cpus to assign
+func (runner *Run) GetCpus() float64 {
+	return runner.Cpus
+}
+// SetCpus - set the number of cpus to use
+func (runner *Run) SetCpus(p float64) *Run {
+	runner.Cpus = p
+	return runner
+}
+// GetMem - accessor returning the amount of memory to use
+func (runner *Run) GetMem() int {
+	return runner.Mem
+}
+// SetMem - set the amount of memory to assign
+func (runner *Run) SetMem(p int) *Run {
+	runner.Mem = p
+	return runner
+}
+// GetDisk  - accesor returning the disk space to assign
+func (runner *Run) GetDisk() int {
+	return runner.Disk
+}
+// SetDisk - set the amount of disk space to use
+func (runner *Run) SetDisk(p int) *Run {
+	runner.Disk = p
+	return runner
+}
+// GetDocker - accessor returning the docker structure if set
+func (runner *Run) GetDocker() *Docker {
+	return runner.Docker
+}
+// SetDocker - replace the Docker image to use
+func (runner *Run) SetDocker(docker *Docker) *Run {
+	runner.Docker = docker
+	return runner
+}
+// GetEnv - return the current environment
+func (runner *Run) GetEnv() map[string]string {
+	return runner.Env
+}
+// SetEnv - replace the environment to use
+func (runner *Run) SetEnv(mp map[string]string) *Run {
+	runner.Env = mp
+	return runner
+}
+// GetMaxLaunchDelay - accessor returning the maximum launch delay
+func (runner *Run) GetMaxLaunchDelay() int {
+	return runner.MaxLaunchDelay
+}
+// SetMaxLaunchDelay - set the delay
+func (runner *Run) SetMaxLaunchDelay(p int) *Run {
+	runner.MaxLaunchDelay = p
+	return runner
+}
+// GetPlacement - get the placement
+func (runner *Run) GetPlacement() *Placement {
+	return runner.Placement
+}
+// SetPlacement - set the job placement
+func (runner *Run) SetPlacement(p *Placement) *Run {
+	runner.Placement = p
+	return runner
+}
+// GetRestart - the restart structure
+func (runner *Run) GetRestart() *Restart {
+	return runner.Restart
+}
+// SetRestart - set the restart structure
+func (runner *Run) SetRestart(restart *Restart) *Run {
+	runner.Restart = restart
+	return runner
+}
+// GetUser - get the user
+func (runner *Run) GetUser() string {
+	return runner.User
+}
+// SetUser - set the user
+func (runner *Run) SetUser(user string) *Run {
+	runner.User = user
+	return runner
 }
 
-func (self *Run) Cmd() string {
-	return self.Cmd_
+// GetVolumes - get job's Volume mappings
+func (runner *Run) GetVolumes() *[]Volume{
+	return &runner.Volumes
 }
-
-func (self *Run) SetCmd(cmd string) *Run {
-	self.Cmd_ = cmd
-	return self
+// SetVolumes - set the job's Volume mappings
+func (runner *Run) SetVolumes(vols []Volume) *Run {
+	runner.Volumes = vols
+	return runner
 }
-
-func (self *Run) Args() *[]string {
-	return &self.Args_
-}
-
-func (self *Run) AddArg(item string) {
-	self.Args_ = append(self.Args_, item)
-}
-func (self *Run) SetArgs(newargs [] string) *Run {
-	self.Args_ = newargs
-	return self
-}
-// cpu
-func (self *Run) Cpus() float64 {
-	return self.Cpus_
-}
-func (self *Run) SetCpus(p float64) *Run {
-	self.Cpus_ = p
-	return self
-}
-// memory
-func (self *Run) Mem() int {
-	return self.Mem_
-}
-func (self *Run) SetMem(p int) *Run {
-	self.Mem_ = p
-	return self
-}
-// disk
-func (self *Run) Disk() int {
-	return self.Disk_
-}
-func (self *Run) SetDisk(p int) *Run {
-	self.Disk_ = p
-	return self
-}
-
-func (self *Run) Docker() *Docker {
-	return self.Docker_
-}
-func (self *Run) SetDocker(docker *Docker) *Run {
-	self.Docker_ = docker
-	return self
-}
-func (self *Run) Env() map[string]string {
-	return self.Env_
-}
-func (self *Run) SetEnv(mp map[string]string) *Run {
-	self.Env_ = mp
-	return self
-}
-
-func (self *Run) MaxLaunchDelay() int {
-	return self.MaxLaunchDelay_
-}
-func (self *Run) SetMaxLaunchDelay(p int) *Run {
-	self.MaxLaunchDelay_ = p
-	return self
-}
-
-func (self *Run) Placement() *Placement {
-	return self.Placement_
-}
-func (self *Run) SetPlacement(p *Placement) *Run {
-	self.Placement_ = p
-	return self
-}
-
-func (self *Run) Restart() *Restart {
-	return self.Restart_
-}
-func (self *Run) SetRestart(restart *Restart) *Run {
-	self.Restart_ = restart
-	return self
-}
-
-func (self *Run) User() string {
-	return self.User_
-}
-func (self *Run) SetUser(user string) *Run {
-	self.User_ = user
-	return self
-}
-
-// make Volume ifc
-func (self *Run) Volumes() *[]Volume {
-	return &self.Volumes_
-}
-func (self *Run) SetVolumes(vols []Volume) *Run {
-	self.Volumes_ = vols
-	return self
-}
-
+// NewRun - create a run structure needed for a job
 func NewRun(cpus float64, mem int, disk int) (*Run, error) {
 	if mem <= 0 {
 		return nil, required("Run.memory")
@@ -434,33 +445,34 @@ func NewRun(cpus float64, mem int, disk int) (*Run, error) {
 		return nil, required("Run.cpus")
 	}
 	vg := Run{
-		Artifacts_: make([]Artifact, 0, 10),
-		Args_: make([]string, 0, 0),
-		Cpus_: cpus,
-		Mem_: mem,
-		Disk_: disk,
-		Docker_:  nil,
-		Env_: make(map[string]string),
-		MaxLaunchDelay_: 0,
-		Placement_: nil,
-		Restart_: nil,
-		Volumes_: make([]Volume, 0, 0),
+		Artifacts: make([]Artifact, 0, 10),
+		Args: make([]string, 0, 0),
+		Cpus: cpus,
+		Mem: mem,
+		Disk: disk,
+		Docker:  nil,
+		Env: make(map[string]string),
+		MaxLaunchDelay: 0,
+		Placement: nil,
+		Restart: nil,
+		Volumes: make([]Volume, 0, 0),
 	}
 	return &vg, nil
 }
-
+// Labels - the job labels; becomes environment variables
 type Labels struct {
 	Location string `json:"location"`
 	Owner    string `json:"owner"`
 }
-
+// Job - toplevel metronome structure for creating and managing a job
 type Job struct {
-	Description_ string `json:"description"`
-	ID_          string `json:"id"`
-	Labels_      *Labels`json:"labels,omitempty"`
-	Run_         *Run `json:"run"`
+	Description string `json:"description"`
+	ID string `json:"id"`
+	Labels *Labels`json:"labels,omitempty"`
+	Run *Run `json:"run"`
 }
 
+// NewJob - create a job checking for some required fields
 func NewJob(id string, description string, labels *Labels, run *Run) (*Job, error) {
 	if len(id) == 0 {
 		return nil, required("Job.Id")
@@ -468,57 +480,67 @@ func NewJob(id string, description string, labels *Labels, run *Run) (*Job, erro
 	if run == nil {
 		return nil, required("Job.run")
 	}
-	return &Job{ID_: id,
-		Description_: description,
-		Labels_: labels,
-		Run_: run,
+	return &Job{ID: id,
+		Description: description,
+		Labels: labels,
+		Run: run,
 	}, nil
 }
+// The following methods only effect a local job structure.  To apply to an existing metronome job, update job must be called
 
-func (self *Job) Id() string {
-	return self.ID_
+// GetID - get the job id
+func (theJob *Job) GetID() string {
+	return theJob.ID
 }
-func (self *Job) SetId(id string) *Job {
-	self.ID_ = id
-	return self
+// SetID - the job id
+func (theJob *Job) SetID(id string) *Job {
+	theJob.ID = id
+	return theJob
 }
-
-func (self *Job) Description() string {
-	return self.Description_
+// GetDescription - get the job description
+func (theJob *Job) GetDescription() string {
+	return theJob.Description
 }
-func (self *Job) SetDescription(desc string) *Job {
-	self.Description_ = desc
-	return self
+// SetDescription - set the job description.
+func (theJob *Job) SetDescription(desc string) *Job {
+	theJob.Description = desc
+	return theJob
 }
-func (self *Job) Run() *Run {
-	return self.Run_
+// GetRun - the Run structure for the job
+func (theJob *Job) GetRun() *Run {
+	return theJob.Run
 }
-func (self *Job) SetRun(run *Run) *Job {
-	self.Run_ = run
-	return self
+// SetRun - set the run structure
+func (theJob *Job) SetRun(run *Run) *Job {
+	theJob.Run = run
+	return theJob
 }
-func (self *Job) Labels() *Labels {
-	return self.Labels_
+// GetLabels - get the job labels
+func (theJob *Job) GetLabels() *Labels {
+	return theJob.Labels
 }
-func (self *Job) SetLabel(label Labels) *Job {
-	self.Labels_ = &label
-	return self
+// SetLabel - set the job lables
+func (theJob *Job) SetLabel(label Labels) *Job {
+	theJob.Labels = &label
+	return theJob
 }
-
+// Schedule - represent a metronome schedule
 type Schedule struct {
-	ID string `json:"id"`
-	Cron string `json:"cron"`
-	ConcurrencyPolicy string `json:"concurrencyPolicy"`
-	Enabled bool `json:"enabled"`
+	ID                      string `json:"id"`
+	Cron                    string `json:"cron"`
+	ConcurrencyPolicy       string `json:"concurrencyPolicy"`
+	Enabled                 bool `json:"enabled"`
 	StartingDeadlineSeconds int `json:"startingDeadlineSeconds"`
-	Timezone string `json:"timezone"`
+	Timezone                string `json:"timezone"`
 }
+// JobStatus - represents a metronome job status
 type JobStatus struct {
 	CompletedAt interface{} `json:"completedAt"`
-	CreatedAt string `json:"createdAt"`
-	ID string `json:"id"`
-	JobID string `json:"jobId"`
-	Status string `json:"status"`
-	Tasks []interface{} `json:"tasks"`
+	CreatedAt   string `json:"createdAt"`
+	ID          string `json:"id"`
+	JobID       string `json:"jobId"`
+	Status      string `json:"status"`
+	Tasks       []interface{} `json:"tasks"`
 }
+// Jobs - list of jobs
 type Jobs []Job

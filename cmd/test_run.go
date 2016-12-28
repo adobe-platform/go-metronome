@@ -82,7 +82,7 @@ func main4() {
 	if err := json.Unmarshal([]byte(data), &a); err != nil {
 		log.Fatal("Unmarshal failed", err)
 	} else {
-		if a.Attribute() == "jim gaffigan" && a.Operator() == EQ && a.Value() == "hot pockets" {
+		if a.GetAttribute() == "jim gaffigan" && a.GetOperator() == EQ && a.GetValue() == "hot pockets" {
 			log.Println("1. success")
 		} else {
 			log.Println("1. success")
@@ -123,12 +123,12 @@ func main4() {
 		} else {
 			fmt.Printf("  to json: %s\n", js)
 		}
-		args := v.Args()
+		args := v.GetArgs()
 		*args = append(*args, "foobar")
 
 		v.AddArg("your momma")
 
-		fmt.Printf("  Added args. %+v parent: %+v\n", args, v.Args())
+		fmt.Printf("  Added args. %+v parent: %+v\n", args, v.GetArgs())
 		if js2, err := json.Marshal(v); err != nil {
 			panic(err)
 		} else {
@@ -143,7 +143,7 @@ func main4() {
 	} else {
 
 		runnable.SetDocker(&Docker{
-			Image_: "foo/bla:test",
+			Image: "foo/bla:test",
 		}).SetEnv(map[string]string{
 			"MON": "test",
 			"CONNECT": "direct",
@@ -153,18 +153,18 @@ func main4() {
 			"--master",
 			"local",
 		}).SetCmd("nuke --dry --master local").SetPlacement(&Placement{
-			Constraints_: []Constraint{
-				Constraint{Attribute_: "rack", Operator_: EQ, Value_: "rack-2"} },
+			Constraints: []Constraint{
+				Constraint{Attribute: "rack", Operator: EQ, Value: "rack-2"} },
 
 		}).SetArtifacts([] Artifact{
-			Artifact{Uri_: "http://foo.test.com/application.zip", Extract_: true, Executable_ :true, Cache_: false},
+			Artifact{URI: "http://foo.test.com/application.zip", Extract: true, Executable :true, Cache: false},
 		}).SetMaxLaunchDelay(
 			3600,
 		).SetRestart(&Restart{
-			ActiveDeadlineSeconds_: 120, Policy_: "NEVER",
+			ActiveDeadlineSeconds: 120, Policy: "NEVER",
 
 		}).SetVolumes([]Volume{
-			Volume{Mode_:RW, HostPath_:"/etc/guest", ContainerPath_: "/mnt/test", },
+			Volume{Mode:RW, HostPath:"/etc/guest", ContainerPath: "/mnt/test", },
 		}).SetUser("root")
 
 		if job, err6 := NewJob("prod.example.app", "Example Application", nil, runnable); err6 != nil {

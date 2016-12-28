@@ -3,6 +3,8 @@ DEV_VER=0.1
 default: compile
 
 install-deps:
+	go get golang.org/x/tools/cmd/cover
+	go get -u github.com/golang/lint/golint
 	go get -u github.com/kardianos/govendor
 	govendor sync
 
@@ -21,6 +23,11 @@ test: dev_container
 		make _tests ; \
 	fi
 
+vet:
+	@go tool vet -all metronome metronome-cli/cli_support metronome-cli/ 
+
+lint:
+	@for codeDir in metronome metronome-cli/cli_support metronome-cli/; do         LINT="$$(golint $$codeDir)" &&         if [ ! -z "$$LINT" ]; then echo "$$LINT" && FAILED="true"; fi; done && if [ "$$FAILED" = "true" ]; then exit 1; fi
 
 # Make compilation depend on the docker dev container
 # Run the build in the dev container leaving the artifact on completion
@@ -85,7 +92,7 @@ go-metronome-linux-amd64:
 
 
 compile:           # cross compiles go-metronome producing darwin and linux ready binaries
-compile: dev_container
+compile: dev_container lint vet
 	@grep -q docker  /proc/1/cgroup ; \
         if [ $$? -ne 0 ]; then \
 		docker run -i --rm \

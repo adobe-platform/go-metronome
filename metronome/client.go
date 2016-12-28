@@ -24,50 +24,43 @@ const (
 	HTTPPost = "POST"
 )
 
-// Metronome is a client that can interact with the metronome API
-type MetronomeChronos interface {
-	Jobs() (*[]Job, error)
-	DeleteJob(job_id string) error
-	StartJob(name string) error
-	AddScheduledJob(job *Job, sched *Schedule) error
-	RunOnceNowJob(job *Job) error
-}
 
+// Metronome represents the client interface for interacting with the metronome API
 type Metronome interface {
 	// POST /v1/jobs
 	CreateJob(*Job) (*Job, error)
 	// DELETE /v1/jobs/$jobId
-	DeleteJob(jobId string) (interface{}, error)
+	DeleteJob(jobID string) (interface{}, error)
 	// GET /v1/jobs/$jobId
-	GetJob(jobId string) (*Job, error)
+	GetJob(jobID string) (*Job, error)
 	// GET /v1/jobs
 	Jobs() (*[]Job, error)
 	// PUT /v1/jobs/$jobId
-	UpdateJob(jobId string, job *Job) (interface{}, error)
+	UpdateJob(jobID string, job *Job) (interface{}, error)
 	//
 	// schedules
 	// GET /v1/jobs/$jobId/runs
-	Runs(jobId string) (*[]JobStatus, error)
+	Runs(jobID string) (*[]JobStatus, error)
 	// POST /v1/jobs/$jobId/runs
-	StartJob(jobId string) (interface{}, error)
+	StartJob(jobID string) (interface{}, error)
 	// GET /v1/jobs/$jobId/runs/$runId
-	StatusJob(jobId string, runId string) (*JobStatus, error)
+	StatusJob(jobID string, runID string) (*JobStatus, error)
 	// POST /v1/jobs/$jobId/runs/$runId/action/stop
-	StopJob(jobId string, runId string) (interface{}, error)
+	StopJob(jobID string, runID string) (interface{}, error)
 
 	//
 	// Schedules
 	//
 	// POST /v1/jobs/$jobId/schedules
-	CreateSchedule(jobId string, new *Schedule) (interface{}, error)
+	CreateSchedule(jobID string, new *Schedule) (interface{}, error)
 	// GET /v1/jobs/$jobId/schedules/$scheduleId
-	GetSchedule(jobId string, schedId string) (*Schedule, error)
+	GetSchedule(jobID string, schedID string) (*Schedule, error)
 	// GET /v1/jobs/$jobId/schedules
-	Schedules(jobId string) (*[]Schedule, error)
+	Schedules(jobID string) (*[]Schedule, error)
 	// DELETE /v1/jobs/$jobId/schedules/$scheduleId
-	DeleteSchedule(jobId string, schedId string) (interface{}, error)
+	DeleteSchedule(jobID string, schedID string) (interface{}, error)
 	// PUT /v1/jobs/$jobId/schedules/$scheduleId
-	UpdateSchedule(jobId string, schedId string, sched *Schedule) (interface{}, error)
+	UpdateSchedule(jobID string, schedID string, sched *Schedule) (interface{}, error)
 
 	//  GET  /v1/metrics
 	Metrics() (interface{}, error)
@@ -110,15 +103,15 @@ func NewClient(config Config) (Metronome, error) {
 }
 
 func (client *Client) apiGet(uri string, queryParams map[string]string, result interface{}) (status int, err error) {
-	return  client.apiCall(HTTPGet, uri, queryParams, "", result)
+	return client.apiCall(HTTPGet, uri, queryParams, "", result)
 }
 
 func (client *Client) apiDelete(uri string, queryParams map[string]string, result interface{}) (status int, err error) {
-	return   client.apiCall(HTTPDelete, uri, queryParams, "", result)
+	return client.apiCall(HTTPDelete, uri, queryParams, "", result)
 
 }
 
-func (client *Client) apiPut(uri string, queryParams map[string]string, putData interface{}, result interface{}) (status int,err error) {
+func (client *Client) apiPut(uri string, queryParams map[string]string, putData interface{}, result interface{}) (status int, err error) {
 	var putDataString []byte
 	if putData != nil {
 		putDataString, err = json.Marshal(putData)
@@ -165,10 +158,11 @@ func (client *Client) apiCall(method string, uri string, queryParams map[string]
 				case json.RawMessage:
 					tt := result.(*json.RawMessage)
 					*tt = msg
-					return status,nil
+					return status, nil
 				default:
 					err = json.Unmarshal(msg, result)
-					if err != nil || status >= 400 { //== http.StatusUnprocessableEntity {
+					if err != nil || status >= 400 {
+						//== http.StatusUnprocessableEntity {
 						// metronome returns json error messages.  panic if so.
 						bb := new(bytes.Buffer)
 						fmt.Fprintf(bb, string(msg))
@@ -181,14 +175,15 @@ func (client *Client) apiCall(method string, uri string, queryParams map[string]
 			}
 
 		case "text/plain; charset=utf-8":
-			if htmlData, err := ioutil.ReadAll(response.Body); err != nil {
+			htmlData, err := ioutil.ReadAll(response.Body);
+			if err != nil {
 				return status, err
-			} else {
-				v := result.(*string)
-				*v = string(htmlData)
 			}
+			v := result.(*string)
+			*v = string(htmlData)
+
 		default:
-			return status, errors.New(fmt.Sprintf("Unknown content-type %s", ct[0]))
+			return status, fmt.Errorf("Unknown content-type %s", ct[0])
 		}
 
 	}
@@ -199,24 +194,23 @@ func (client *Client) apiCall(method string, uri string, queryParams map[string]
 	}
 	return status, nil
 }
-func (client *Client) buildURL(req_path string, queryParams map[string]string) {
+func (client *Client) buildURL(reqPath string, queryParams map[string]string) {
 	query := client.url.Query()
-	master,_ := url.Parse(client.config.URL)
-	prefix :=master.Path
+	master, _ := url.Parse(client.config.URL)
+	prefix := master.Path
 	for k, v := range queryParams {
 		query.Add(k, v)
 	}
 	client.url.RawQuery = query.Encode()
 
-	client.url.Path = path.Join(prefix, req_path)
+	client.url.Path = path.Join(prefix, reqPath)
 }
-
 
 func (client *Client) applyRequestHeaders(request *http.Request) {
 	request.Header.Add("Content-Type", "application/json")
 	request.Header.Add("Accept", "application/json")
 	if client.config.User != "" &&  client.config.Pw != "" {
-		request.SetBasicAuth(client.config.User,client.config.Pw)
+		request.SetBasicAuth(client.config.User, client.config.Pw)
 	}
 	if client.config.AuthToken != "" {
 		request.Header.Add("Authorization", client.config.AuthToken)

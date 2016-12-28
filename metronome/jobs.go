@@ -12,39 +12,44 @@ import (
 	"github.com/Sirupsen/logrus"
 	"net/http"
 )
-
+// CreateJob - create a metronome job.  returns the job or an error
 func (client *Client) CreateJob(job *Job) (*Job, error) {
 	var reply Job
-	if _, err := client.apiPost(MetronomeAPIJobCreate, nil,job,&reply); err != nil {
+	if _, err := client.apiPost(MetronomeAPIJobCreate, nil, job, &reply); err != nil {
 		return nil, err
 	}
 	return &reply, nil
 }
 
+// DeleteJob - deletes a job by calling metronome api
 // DELETE /v1/jobs/$jobId
-func (client *Client)  DeleteJob(jobId string) (interface{}, error) {
+func (client *Client)  DeleteJob(jobID string) (interface{}, error) {
 	var msg Job //json.RawMessage
-	if _,err := client.apiDelete(fmt.Sprintf(MetronomeAPIJobDelete, jobId), nil, &msg); err != nil {
+	_, err := client.apiDelete(fmt.Sprintf(MetronomeAPIJobDelete, jobID), nil, &msg)
+	if err != nil {
 		return nil, err
-	} else {
-		return msg, err
 	}
+	return msg, err
+
 }
+// GetJob - Gets a job by calling metronome api
 // GET /v1/jobs/$jobId
-func (client *Client) GetJob(jobId string) (*Job, error) {
+func (client *Client) GetJob(jobID string) (*Job, error) {
 	var job Job
-	if _,err := client.apiGet(fmt.Sprintf(MetronomeAPIJobGet, jobId), nil, &job); err != nil {
+	_, err := client.apiGet(fmt.Sprintf(MetronomeAPIJobGet, jobID), nil, &job)
+	if err != nil {
 		return nil, err
-	} else {
-		return &job, err
 	}
+	return &job, err
+
 }
+// Jobs - get a list of all jobs by calling metronome api
 // GET /v1/jobs
 func (client *Client)  Jobs() (*[]Job, error) {
 	//	jobs := new(Jobs)
 	jobs := make([]Job, 0, 0)
 
-	_,err := client.apiGet(MetronomeAPIJobList, nil, &jobs)
+	_, err := client.apiGet(MetronomeAPIJobList, nil, &jobs)
 
 	if err != nil {
 		return nil, err
@@ -53,53 +58,61 @@ func (client *Client)  Jobs() (*[]Job, error) {
 }
 
 
+// UpdateJob - given jobID and new job structure, replace an existing job by calling metronome api
 // PUT /v1/jobs/$jobId
-func (client *Client) UpdateJob(jobId string, job *Job) (interface{}, error) {
+func (client *Client) UpdateJob(jobID string, job *Job) (interface{}, error) {
 	var msg json.RawMessage
-	if _,err := client.apiPut(fmt.Sprintf(MetronomeAPIJobUpdate, jobId),nil,job,&msg); err != nil {
-		if bbb,err2 := json.Marshal(msg); err2 != nil {
-			return nil, errors.New(fmt.Sprintf("JobUpdate error %s\n\tAnd %s\n",err.Error(),err2.Error()))
-		} else {
-			return nil, errors.New(fmt.Sprintf("JobUpdate error %s\n%s\n", err, string(bbb)))
+	_, err := client.apiPut(fmt.Sprintf(MetronomeAPIJobUpdate, jobID), nil, job, &msg)
+	if err != nil {
+		bbb, err2 := json.Marshal(msg)
+		if err2 != nil {
+			return nil, fmt.Errorf("JobUpdate error %s\n\tAnd %s", err.Error(), err2.Error())
 		}
+		return nil, fmt.Errorf("JobUpdate error %s\n%s", err, string(bbb))
+
 	}
 	return &msg, nil
 }
-//
-// schedules
+
+// Runs - get all the 'runs' of a given job
 // GET /v1/jobs/$jobId/runs
-func (client *Client) Runs(jobId string) (*[]JobStatus, error) {
+func (client *Client) Runs(jobID string) (*[]JobStatus, error) {
 	jobs := make([]JobStatus, 0, 0)
 
-	_,err := client.apiGet(fmt.Sprintf(MetronomeAPIJobRunList,jobId), nil, &jobs)
+	_, err := client.apiGet(fmt.Sprintf(MetronomeAPIJobRunList, jobID), nil, &jobs)
 
 	if err != nil {
 		return nil, err
 	}
 	return &jobs, nil
 }
+// StartJob - starts a metronome job.  Implies that CreateJob was already called.
 // POST /v1/jobs/$jobId/runs
-func (client *Client) StartJob(jobId string) (interface{}, error) {
+func (client *Client) StartJob(jobID string) (interface{}, error) {
 	var msg JobStatus
-	if _,err := client.apiPost(fmt.Sprintf(MetronomeAPIJobRunStart, jobId), nil, jobId, &msg); err != nil {
+	if _, err := client.apiPost(fmt.Sprintf(MetronomeAPIJobRunStart, jobID), nil, jobID, &msg); err != nil {
 		return nil, err
 	}
 	return msg, nil
 }
+// StatusJob - get a job status
 // GET /v1/jobs/$jobId/runs/$runId
-func (client *Client)  StatusJob(jobId string, runId string) (*JobStatus, error) {
+func (client *Client)  StatusJob(jobID string, runID string) (*JobStatus, error) {
 	var job JobStatus
 
-	if _, err := client.apiGet(fmt.Sprintf(MetronomeAPIJobRunStatus, jobId, runId), nil, &job); err != nil {
+	_, err := client.apiGet(fmt.Sprintf(MetronomeAPIJobRunStatus, jobID, runID), nil, &job)
+	if err != nil {
 		return nil, err
-	} else {
-		return &job, err
 	}
+	return &job, err
+
 }
+
+// StopJob - stop a running job.  returns and error on failure
 // POST /v1/jobs/$jobId/runs/$runId/action/stop
-func (client *Client) StopJob(jobId string, runId string) (interface{}, error) {
+func (client *Client) StopJob(jobID string, runID string) (interface{}, error) {
 	var msg json.RawMessage
-	if _,err := client.apiPost(fmt.Sprintf(MetronomeAPIJobRunStop, jobId, runId), nil, jobId, &msg); err != nil {
+	if _, err := client.apiPost(fmt.Sprintf(MetronomeAPIJobRunStop, jobID, runID), nil, jobID, &msg); err != nil {
 		return nil, err
 	}
 	return msg, nil
@@ -108,85 +121,100 @@ func (client *Client) StopJob(jobId string, runId string) (interface{}, error) {
 //
 // Schedules
 //
+
+// CreateSchedule - assign a schedule to a job
 // POST /v1/jobs/$jobId/schedules
-func (client *Client) CreateSchedule(jobId string, sched *Schedule) (interface{}, error) {
+func (client *Client) CreateSchedule(jobID string, sched *Schedule) (interface{}, error) {
 	var msg Schedule //json.RawMessage
-	logrus.Debugf("client.JobScheduleCreate %s\n",jobId)
-	if _,err := client.apiPost(fmt.Sprintf(MetronomeAPIJobScheduleCreate, jobId), nil, sched, &msg); err != nil {
+	logrus.Debugf("client.JobScheduleCreate %s\n", jobID)
+	if _, err := client.apiPost(fmt.Sprintf(MetronomeAPIJobScheduleCreate, jobID), nil, sched, &msg); err != nil {
 		return nil, err
 	}
 	return msg, nil
 
 }
+
+// GetSchedule - get a schedule associated with a job
 // GET /v1/jobs/$jobId/schedules/$scheduleId
-func (client *Client) GetSchedule(jobId string, schedId string) (*Schedule, error) {
+func (client *Client) GetSchedule(jobID string, schedID string) (*Schedule, error) {
 	var sched Schedule
 
-	if _,err := client.apiGet(fmt.Sprintf(MetronomeAPIJobScheduleStatus, jobId, schedId), nil, &sched); err != nil {
+	_, err := client.apiGet(fmt.Sprintf(MetronomeAPIJobScheduleStatus, jobID, schedID), nil, &sched)
+	if err != nil {
 		return nil, err
-	} else {
-		fmt.Printf("sched: %+v\n",sched)
-		return &sched, err
 	}
+	fmt.Printf("sched: %+v\n", sched)
+	return &sched, err
+
 }
+// Schedules - get all schedules
 // GET /v1/jobs/$jobId/schedules
-func (client *Client) Schedules(jobId string) (*[]Schedule, error) {
+func (client *Client) Schedules(jobID string) (*[]Schedule, error) {
 	scheds := make([]Schedule, 0, 0)
 
-	_,err := client.apiGet(fmt.Sprintf(MetronomeAPIJobScheduleList, jobId), nil, &scheds)
+	_, err := client.apiGet(fmt.Sprintf(MetronomeAPIJobScheduleList, jobID), nil, &scheds)
 
 	if err != nil {
 		return nil, err
 	}
 	return &scheds, nil
 }
+
+// DeleteSchedule - delete a schedule
 // DELETE /v1/jobs/$jobId/schedules/$scheduleId
-func (client *Client) DeleteSchedule(jobId string, schedId string) (interface{}, error) {
+func (client *Client) DeleteSchedule(jobID string, schedID string) (interface{}, error) {
 	var msg json.RawMessage
-	if status,err := client.apiDelete(fmt.Sprintf(MetronomeAPIJobScheduleDelete, jobId, schedId), nil, &msg); err != nil {
+	status, err := client.apiDelete(fmt.Sprintf(MetronomeAPIJobScheduleDelete, jobID, schedID), nil, &msg)
+	if err != nil {
 		return nil, err
-	} else {
-		if len( []byte(msg) )== 0{
-			return http.StatusText(status),nil
-		}
-		return msg, err
 	}
+	if len([]byte(msg)) == 0 {
+		return http.StatusText(status), nil
+	}
+	return msg, err
+
 }
+// UpdateSchedule - update an existing schedule associated with a job
 // PUT /v1/jobs/$jobId/schedules/$scheduleId
-func (client *Client) UpdateSchedule(jobId string, schedId string, sched *Schedule) (interface{}, error) {
+func (client *Client) UpdateSchedule(jobID string, schedID string, sched *Schedule) (interface{}, error) {
 	var msg json.RawMessage
-	if _,err := client.apiPut(fmt.Sprintf(MetronomeAPIJobScheduleUpdate, jobId, schedId),nil,sched,&msg); err != nil {
-		if bbb,err2 := json.Marshal(msg); err2 != nil {
-			return nil, errors.New(fmt.Sprintf("JobScheduleUpdate error %s\n\tAnd %s\n",err.Error(),err2.Error()))
-		} else {
-			return nil, errors.New(fmt.Sprintf("JobScheduleUpdate error %s\n\tAnd%s\n", err, string(bbb)))
+	_, err := client.apiPut(fmt.Sprintf(MetronomeAPIJobScheduleUpdate, jobID, schedID), nil, sched, &msg)
+	if err != nil {
+		bbb, err2 := json.Marshal(msg)
+		if err2 != nil {
+			return nil, fmt.Errorf("JobScheduleUpdate multiple errors: %s / %s", err.Error(), err2.Error())
 		}
+		return nil, fmt.Errorf("JobScheduleUpdate multiple error %s / %s", err, string(bbb))
+
 	}
 	return sched, nil
 
 }
+// Metrics - returns metrics from the metronome service
 //  GET  /v1/metrics
 func (client *Client) Metrics() (interface{}, error) {
 	msg := json.RawMessage{}
-	if _,err := client.apiGet(MetronomeAPIMetrics, nil, &msg); err != nil {
+	_, err := client.apiGet(MetronomeAPIMetrics, nil, &msg)
+	if err != nil {
 		return nil, err
-	} else {
-		return &msg, err
 	}
+	return &msg, err
+
 }
 
-
+// Ping - test if the metronome service is running. returns 'pong' on success
 //  GET /v1/ping
 func (client *Client) Ping() (*string, error) {
-	val:= new(string)
-	msg:=(interface{})(val)
-	if _,err := client.apiGet(MetronomeAPIPing, nil, msg); err != nil {
+	val := new(string)
+	msg := (interface{})(val)
+	_, err := client.apiGet(MetronomeAPIPing, nil, msg)
+	if err != nil {
 		return nil, err
-	} else {
-		// use Sprintf to reflect the value out.  painful
-		retval := fmt.Sprintf("%s",*msg.(*string))
-		return &retval, err
 	}
+	// use Sprintf to reflect the value out.  painful
+	retval := fmt.Sprintf("%s", *msg.(*string))
+	return &retval, err
+
 }
 
 // RunOnceNowSchedule will return a schedule that starts immediately, runs once,
@@ -194,36 +222,6 @@ func (client *Client) Ping() (*string, error) {
 func RunOnceNowSchedule() string {
 	return ImmediateCrontab()
 }
-
-
-/*
-
-// StartJob can manually start a job
-// name: The name of the job to start
-// args: A map of arguments to append to the job's command
-func (client *Client) StartJob(name string) error {
-	raw := json.RawMessage{}
-	return client.apiPost(fmt.Sprintf(MetronomeAPIStartJob, name),nil,nil,raw)
-
-}
-
-// AddScheduledJob will add a scheduled job
-// job: The job you would like to schedule
-func (client *Client) AddScheduledJob(job *Job, sched *Schedule) error {
-	return client.apiPost(MetrononeAPIAddScheduledJob, nil, job, nil)
-}
-
-// RunOnceNowJob will add a scheduled job with a schedule generated by RunOnceNowSchedule
-func (client *Client) RunOnceNowJob(job *Job) error {
-	//job.Schedule = RunOnceNowSchedule()
-	//job.Epsilon = "PT10M"
-	if sched, err := ImmediateSchedule(); err != nil{
-		return err
-	} else {
-		return client.AddScheduledJob(job, sched)
-	}
-}
-*/
 
 func formatTimeString(t time.Time) string {
 	if t.IsZero() {
@@ -239,6 +237,9 @@ var (
 	repeatRegex = regexp.MustCompile(`R((?P<repeat>\d*))`)
 )
 
+// ConvertIso8601ToCron - attempts to convert an iso8601, 3 -part date into a cron repre.  Experimental
+//  - only simple cases will work without creating *multiple* schedules
+//
 func ConvertIso8601ToCron(isoRep string) (string, error) {
 	pat := strings.Split(isoRep, "/")
 	if len(pat) == 3 {
@@ -260,11 +261,11 @@ func ConvertIso8601ToCron(isoRep string) (string, error) {
 				case "repeat":
 					repeatTimes = val
 				default:
-					return "", errors.New(fmt.Sprintf("unknown field %s", name))
+					return "", fmt.Errorf("unknown field %s", name)
 				}
 			}
 		} else {
-			return "", errors.New(fmt.Sprintf("No repeat pattern"))
+			return "", fmt.Errorf("No repeat pattern")
 
 		}
 		tdur, err := duration.FromString(interval)
@@ -272,10 +273,10 @@ func ConvertIso8601ToCron(isoRep string) (string, error) {
 		if err != nil {
 			return "", errors.New("Illegal duration")
 		}
-		time_t := tdur.ToDuration()
+		timeT := tdur.ToDuration()
 		if repeatTimes != 0 {
 			// minute is the smallest scheduling unit for metronome
-			slot := int64(time_t)
+			slot := int64(timeT)
 			if slot < 1 {
 				return "", errors.New("Too small a duration")
 			} else if slot < 60 {
@@ -290,40 +291,41 @@ func ConvertIso8601ToCron(isoRep string) (string, error) {
 		var (
 			y, M, d, h, m, s int
 		)
-		if _, err := fmt.Sscanf(time.Now().Format(time.RFC3339), "%d-%d-%dT%d:%d:%dZ", &y, &M, &d, &h, &m, &s); err != nil {
+		_, err := fmt.Sscanf(time.Now().Format(time.RFC3339), "%d-%d-%dT%d:%d:%dZ", &y, &M, &d, &h, &m, &s)
+		if err != nil {
 			return "", err
-		} else {
-			return fmt.Sprint("%d %d %d %d * %d%", m, h, d, M, y), nil
 		}
+		return fmt.Sprintf("%d %d %d %d * %d", m, h, d, M, y), nil
+
 	}
 
 	return "", errors.New("Unknown error")
 }
-
+// ImmediateCrontab - generates a point in time crontab
 func ImmediateCrontab() string {
 	var (
 		y, M, d, h, m, s int
 	)
-	if _, err := fmt.Sscanf(time.Now().Format(time.RFC3339), "%d-%d-%dT%d:%d:%dZ", &y, &M, &d, &h, &m, &s); err != nil {
+	_, err := fmt.Sscanf(time.Now().Format(time.RFC3339), "%d-%d-%dT%d:%d:%dZ", &y, &M, &d, &h, &m, &s)
+	if err != nil {
 		return ""
-	} else {
-		return fmt.Sprint("%d %d %d %d * %d%", m, h, d, M, y)
 	}
-
+	return fmt.Sprintf("%d %d %d %d * %d", m, h, d, M, y)
 }
+// ImmediateSchedule - create a metronome schedule
 func ImmediateSchedule() (*Schedule, error) {
 	var (
 		y, M, d, h, m, s int
 		cronstr string
 	)
-	if _, err := fmt.Sscanf(time.Now().Format(time.RFC3339), "%d-%d-%dT%d:%d:%dZ", &y, &M, &d, &h, &m, &s); err != nil {
+	_, err := fmt.Sscanf(time.Now().Format(time.RFC3339), "%d-%d-%dT%d:%d:%dZ", &y, &M, &d, &h, &m, &s)
+	if err != nil {
 		return nil, err
-	} else {
-		cronstr = fmt.Sprint("%d %d %d %d * %d%", m, h, d, M, y)
 	}
+	cronstr = fmt.Sprintf("%d %d %d %d * %d", m, h, d, M, y)
 
 	sched := &Schedule{
-		ID:  fmt.Sprintf("%s-%d%d%d%d%d%d", y, M, d, h, m, s), //"everyminute",
+		ID:  fmt.Sprintf("%d%d%d%d%d%d ", y, M, d, h, m, s), //"everyminute",
 		Cron: cronstr, //"cron": "* * * * *",
 		ConcurrencyPolicy: "ALLOW",
 		Enabled: true,
