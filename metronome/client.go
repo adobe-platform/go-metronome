@@ -12,7 +12,6 @@ import (
 	"io/ioutil"
 	"github.com/Sirupsen/logrus"
 	"bytes"
-
 	"path"
 )
 
@@ -40,7 +39,10 @@ type Metronome interface {
 	//
 	// schedules
 	// GET /v1/jobs/$jobId/runs
-	Runs(jobID string) (*[]JobStatus, error)
+	// Technically, this rev of Runs() is a hack to get functionality from the undocumented api
+	//   - since is milliseconds from epoch
+
+	Runs(jobID string, statusSince int64) (*Job, error)
 	// POST /v1/jobs/$jobId/runs
 	StartJob(jobID string) (interface{}, error)
 	// GET /v1/jobs/$jobId/runs/$runId
@@ -68,7 +70,10 @@ type Metronome interface {
 	Ping() (*string, error)
 }
 
-
+// TwentyFourHoursAgo - return time 24 hours ago
+func TwentyFourHoursAgo() int64{
+	return time.Now().UnixNano() / int64(time.Millisecond) - 24 * 3600000
+}
 
 // A Client can make http requests
 type Client struct {
@@ -102,16 +107,17 @@ func NewClient(config Config) (Metronome, error) {
 	return client, nil
 }
 
-func (client *Client) apiGet(uri string, queryParams map[string]string, result interface{}) (status int, err error) {
-	return client.apiCall(HTTPGet, uri, queryParams, "", result)
+func (client *Client) apiGet(uri string, queryParams map[string][]string, result interface{}) (status int, err error) {
+	return  client.apiCall(HTTPGet, uri, queryParams, "", result)
 }
 
-func (client *Client) apiDelete(uri string, queryParams map[string]string, result interface{}) (status int, err error) {
-	return client.apiCall(HTTPDelete, uri, queryParams, "", result)
+func (client *Client) apiDelete(uri string, queryParams map[string][]string, result interface{}) (status int, err error) {
+	return   client.apiCall(HTTPDelete, uri, queryParams, "", result)
 
 }
 
-func (client *Client) apiPut(uri string, queryParams map[string]string, putData interface{}, result interface{}) (status int, err error) {
+func (client *Client) apiPut(uri string, queryParams map[string][]string, putData interface{}, result interface{}) (status int,err error) {
+
 	var putDataString []byte
 	if putData != nil {
 		putDataString, err = json.Marshal(putData)
@@ -120,14 +126,13 @@ func (client *Client) apiPut(uri string, queryParams map[string]string, putData 
 	return client.apiCall(HTTPPut, uri, queryParams, string(putDataString), result)
 }
 
-func (client *Client) apiPost(uri string, queryParams map[string]string, postData interface{}, result interface{}) (status int, err error) {
+func (client *Client) apiPost(uri string, queryParams map[string][]string, postData interface{}, result interface{}) (status int, err error) {
 	//postDataString, err := json.Marshal(postData)
 	postDataString := new(bytes.Buffer)
 	enc := json.NewEncoder(postDataString)
 	enc.SetEscapeHTML(false)
 	err = enc.Encode(postData)
 
-	//fmt.Printf("post data:%s\n",postDataString.String())
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
@@ -136,7 +141,7 @@ func (client *Client) apiPost(uri string, queryParams map[string]string, postDat
 
 }
 
-func (client *Client) apiCall(method string, uri string, queryParams map[string]string, body string, result interface{}) (int, error) {
+func (client *Client) apiCall(method string, uri string, queryParams map[string][]string, body string, result interface{}) (int, error) {
 	client.buildURL(uri, queryParams)
 	status, response, err := client.httpCall(method, body)
 
@@ -185,7 +190,6 @@ func (client *Client) apiCall(method string, uri string, queryParams map[string]
 		default:
 			return status, fmt.Errorf("Unknown content-type %s", ct[0])
 		}
-
 	}
 
 	// TODO: Handle error status codes
@@ -194,12 +198,14 @@ func (client *Client) apiCall(method string, uri string, queryParams map[string]
 	}
 	return status, nil
 }
-func (client *Client) buildURL(reqPath string, queryParams map[string]string) {
+func (client *Client) buildURL(reqPath string, queryParams map[string][]string) {
 	query := client.url.Query()
-	master, _ := url.Parse(client.config.URL)
-	prefix := master.Path
-	for k, v := range queryParams {
-		query.Add(k, v)
+	master,_ := url.Parse(client.config.URL)
+	prefix :=master.Path
+	for k, vl := range queryParams {
+		for _,val := range vl {
+			query.Add(k, val)
+		}
 	}
 	client.url.RawQuery = query.Encode()
 

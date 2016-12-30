@@ -36,7 +36,14 @@ func (client *Client)  DeleteJob(jobID string) (interface{}, error) {
 // GET /v1/jobs/$jobId
 func (client *Client) GetJob(jobID string) (*Job, error) {
 	var job Job
-	_, err := client.apiGet(fmt.Sprintf(MetronomeAPIJobGet, jobID), nil, &job)
+	queryParams := map[string][]string{
+		"embed" : {
+			"historySummary",
+			"activeRuns",
+			"schedules",
+		},
+	}
+	_, err := client.apiGet(fmt.Sprintf(MetronomeAPIJobGet, jobID), queryParams, &job)
 	if err != nil {
 		return nil, err
 	}
@@ -48,8 +55,14 @@ func (client *Client) GetJob(jobID string) (*Job, error) {
 func (client *Client)  Jobs() (*[]Job, error) {
 	//	jobs := new(Jobs)
 	jobs := make([]Job, 0, 0)
+	queryParams := map[string][]string{
+		"embed" : {
+			"historySummary",
+			"activeRuns",
+		},
+	}
 
-	_, err := client.apiGet(MetronomeAPIJobList, nil, &jobs)
+	_, err := client.apiGet(MetronomeAPIJobList, queryParams, &jobs)
 
 	if err != nil {
 		return nil, err
@@ -63,10 +76,10 @@ func (client *Client)  Jobs() (*[]Job, error) {
 func (client *Client) UpdateJob(jobID string, job *Job) (interface{}, error) {
 	var msg json.RawMessage
 	_, err := client.apiPut(fmt.Sprintf(MetronomeAPIJobUpdate, jobID), nil, job, &msg)
-	if err != nil {
+			if err != nil {
 		bbb, err2 := json.Marshal(msg)
-		if err2 != nil {
-			return nil, fmt.Errorf("JobUpdate error %s\n\tAnd %s", err.Error(), err2.Error())
+				if err2 != nil {
+					return nil, fmt.Errorf("JobUpdate error %s\n\tAnd %s", err.Error(), err2.Error())
 		}
 		return nil, fmt.Errorf("JobUpdate error %s\n%s", err, string(bbb))
 
@@ -76,7 +89,31 @@ func (client *Client) UpdateJob(jobID string, job *Job) (interface{}, error) {
 
 // Runs - get all the 'runs' of a given job
 // GET /v1/jobs/$jobId/runs
-func (client *Client) Runs(jobID string) (*[]JobStatus, error) {
+func (client *Client) Runs(jobID string, since int64) (*Job, error) {
+	//jobs := make([]JobStatus, 0, 0)
+	//jobs := make([]Job, 0, 0)
+	var jobs Job
+	queryParams := map[string][]string{
+		"_timestamp": {
+			strconv.FormatInt(since , 10),
+//			strconv.FormatInt(time.Now().UnixNano() / int64(time.Millisecond) - 24 * 3600000, 10),
+		},
+		"embed" : {
+			"history",
+			"historySummary",
+			"activeRuns",
+			"schedules",
+		},
+	}
+	// lame hidden parameters are only reachable via /v1/jobs/$jobId with queryParams
+	_, err := client.apiGet(fmt.Sprintf(MetronomeAPIJobGet, jobID), queryParams, &jobs)
+	if err != nil {
+		return nil, err
+	}
+	return &jobs, nil
+}
+// RunLs  - list running jobs - standard
+func (client *Client) RunLs(jobID string) (*[]JobStatus, error) {
 	jobs := make([]JobStatus, 0, 0)
 
 	_, err := client.apiGet(fmt.Sprintf(MetronomeAPIJobRunList, jobID), nil, &jobs)
@@ -140,7 +177,7 @@ func (client *Client) GetSchedule(jobID string, schedID string) (*Schedule, erro
 	var sched Schedule
 
 	_, err := client.apiGet(fmt.Sprintf(MetronomeAPIJobScheduleStatus, jobID, schedID), nil, &sched)
-	if err != nil {
+		if err != nil {
 		return nil, err
 	}
 	fmt.Printf("sched: %+v\n", sched)

@@ -18,7 +18,6 @@ import (
 // flag.Var calls flag.Value interface of the provided interface{}
 // The following light-weight types implement Value while preserving the Set/String symantics of the `real` type it alias.
 
-
 // RunArgs - thin type providing Flags Value implementation for Metronome Run->Args
 // type override to support parsing.  []string alias for met.Run.Args
 // It implements flag.Value via Set/String
@@ -35,38 +34,8 @@ func (i *RunArgs) Set(value string) error {
 	*i = append(*i, value)
 	return nil
 }
-
-// LabelList - thin type providing Flags Value interface implementaion for Metronome labels ( they become environment variables)
-//   type override to support parsing.  LabelList alias' met.Labels
-//   It implements flag.Value via Set/String
-type LabelList  met.Labels
-
-// String - Value interface implementation used with Flags
-func (labels *LabelList) String() string {
-	return fmt.Sprintf("%s", *labels)
-}
-// Set - Value interface implementation used with Flags
-func (labels *LabelList) Set(value string) error {
-	logrus.Debugf("LabelList %s", value)
-	v := strings.Split(value, ";")
-	logrus.Debugf("LabelList %+v", v)
-	//lb := LabelList{}
-	for _, ii := range v {
-		nv := strings.Split(ii, "=")
-		switch strings.ToLower(nv[0]) {
-		case "location":
-			labels.Location = nv[1]
-		case "owner":
-			labels.Owner = nv[1]
-		default:
-			return errors.New("Unknown value" + nv[0])
-		}
-	}
-	if labels.Location == ""  && labels.Owner == "" {
-		return errors.New("Missing both location and owner")
-	}
-	return nil
-}
+// type override to support parsing.  env alias' map[string]string
+// It implements flag.Value via Set/String
 
 // NvList - thin type providing Flags Value interface implementation for items needing map[string]string
 type NvList map[string]string
@@ -85,7 +54,7 @@ func (list *NvList) Set(value string) error {
 	}
 	logrus.Debugf("NvList %+v", nv)
 	vv := (*list)
-	vv[nv[0]] = nv[1]
+	vv[strings.TrimSpace(nv[0])] = strings.TrimSpace(nv[1])
 	return nil
 }
 

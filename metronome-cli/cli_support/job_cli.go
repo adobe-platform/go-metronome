@@ -25,7 +25,7 @@ type JobTopLevel struct {
 // Usage - show usage
 func (theJob *JobTopLevel) Usage(writer io.Writer) {
 	fmt.Fprintf(writer, "job {create|delete|update|ls|get|schedules|schedule|help}\n")
-	fmt.Fprintln(writer, `
+	fmt.Fprintf(writer, `
 	  create  <options>   | creates a Job
 	  delete  <options>   | deletes a Job
 	  update  <options>   | update a Job
@@ -107,7 +107,6 @@ func (theJob *JobTopLevel) Parse(args [] string) (exec CommandExec, err error) {
 //  Used with Metronome **POST /v1/jobs**
 type JobCreateConfig struct {
 	JobID
-
 	cpus                  float64
 	disk                  int
 	mem                   int
@@ -118,13 +117,14 @@ type JobCreateConfig struct {
 	constraints           ConstraintList
 	volumes               VolumeList
 	env                   NvList
-	labels                LabelList
+	labels                NvList
 	artifacts             ArtifactList
 	args                  RunArgs
 	cmd                   string
 	user                  string
 	maxLaunchDelay        int
 	runNow                bool
+
 }
 // makeJob - construct a metronome job for the structure - usually populated via cli flags
 func (theJob *JobCreateConfig) makeJob() (*met.Job, error) {
@@ -164,10 +164,6 @@ func (theJob *JobCreateConfig) makeJob() (*met.Job, error) {
 	if theJob.description != "" {
 		description = theJob.description
 	}
-	var ll *met.Labels
-	if theJob.labels.Location != "" || theJob.labels.Owner != "" {
-		ll = (*met.Labels)(&theJob.labels)
-	}
 	if len(theJob.restartPolicy) > 0 || theJob.activeDeadlineSeconds != 0 {
 		restart, err := met.NewRestart(theJob.activeDeadlineSeconds, theJob.restartPolicy)
 		if err != nil {
@@ -176,7 +172,7 @@ func (theJob *JobCreateConfig) makeJob() (*met.Job, error) {
 		run.SetRestart(restart)
 
 	}
-	newJob, err := met.NewJob(string(theJob.JobID), description, ll, run)
+	newJob, err := met.NewJob(string(theJob.JobID), description, met.Labels(theJob.labels), run)
 	if err != nil {
 		return nil, err
 
@@ -200,6 +196,9 @@ type JobCreateRuntime struct {
 func (theJob *JobCreateRuntime) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
 	if theJob.env == nil {
 		theJob.env = make(map[string]string)
+	}
+	if theJob.labels == nil {
+		theJob.labels = make(map[string]string)
 	}
 
 	logrus.Debugf("nvlist: %+v", theJob.env)

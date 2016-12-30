@@ -112,7 +112,7 @@ func (theRun *RunLs) Parse(args []string) (_ CommandExec, err error) {
 }
 // Execute the Metronome API
 func (theRun *RunLs) Execute(runtime *Runtime) (interface{}, error) {
-	return runtime.client.Runs(string(*theRun))
+	return runtime.client.Runs(string(*theRun),0)
 }
 
 // RunStartJob - cli actuator to run POST /v1/jobs/$jobId/runs
