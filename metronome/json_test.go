@@ -33,7 +33,7 @@ var _ = Describe("JSON rendering", func() {
 		var job2 Job
 		err := json.Unmarshal([]byte(hiddenJobApi), &job2)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(job2.Run()).NotTo(Equal(nil))
+		Expect(job2.GetRun()).NotTo(Equal(nil))
 		Expect(job2.Schedules).ShouldNot(Equal(nil))
 		Expect(job2.History).ShouldNot(Equal(nil))
 		Expect(job2.HistorySummary).ShouldNot(Equal(nil))
@@ -46,9 +46,9 @@ var _ = Describe("JSON rendering", func() {
 	It("Makes builds a job in Code producing stock API structure", func() {
 		runnable, err5 := NewRun(1.5, 32, 128);
 		Expect(err5).ShouldNot(HaveOccurred())
-		Expect(runnable.Cpus_).To(Equal(1.5))
+		Expect(runnable.Cpus).To(Equal(1.5))
 		runnable.SetDocker(&Docker{
-			Image_: "foo/bla:test",
+			Image: "foo/bla:test",
 		}).SetEnv(map[string]string{
 			"MON": "test",
 			"CONNECT": "direct",
@@ -58,18 +58,18 @@ var _ = Describe("JSON rendering", func() {
 			"--master",
 			"local",
 		}).SetCmd("nuke --dry --master local").SetPlacement(&Placement{
-			Constraints_: []Constraint{
-				Constraint{Attribute_: "rack", Operator_: EQ, Value_: "rack-2"} },
+			Constraints: []Constraint{
+				Constraint{Attribute: "rack", Operator: EQ, Value: "rack-2"} },
 
 		}).SetArtifacts([] Artifact{
-			Artifact{Uri_: "http://foo.test.com/application.zip", Extract_: true, Executable_ :true, Cache_: false},
+			Artifact{URI: "http://foo.test.com/application.zip", Extract: true, Executable: true, Cache: false},
 		}).SetMaxLaunchDelay(
 			3600,
 		).SetRestart(&Restart{
-			ActiveDeadlineSeconds_: 120, Policy_: "NEVER",
+			ActiveDeadlineSeconds: 120, Policy: "NEVER",
 
 		}).SetVolumes([]Volume{
-			Volume{Mode_:RW, HostPath_:"/etc/guest", ContainerPath_: "/mnt/test", },
+			Volume{Mode:RW, HostPath:"/etc/guest", ContainerPath: "/mnt/test", },
 		}).SetUser("root")
 
 		job, err6 := NewJob("prod.example.app", "Example Application", Labels{"location":"olympus", "owner":"zeus"}, runnable);
