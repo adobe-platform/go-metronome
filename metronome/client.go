@@ -71,7 +71,7 @@ type Metronome interface {
 }
 
 // TwentyFourHoursAgo - return time 24 hours ago
-func TwentyFourHoursAgo() int64{
+func TwentyFourHoursAgo() int64 {
 	return time.Now().UnixNano() / int64(time.Millisecond) - 24 * 3600000
 }
 
@@ -108,15 +108,15 @@ func NewClient(config Config) (Metronome, error) {
 }
 
 func (client *Client) apiGet(uri string, queryParams map[string][]string, result interface{}) (status int, err error) {
-	return  client.apiCall(HTTPGet, uri, queryParams, "", result)
+	return client.apiCall(HTTPGet, uri, queryParams, "", result)
 }
 
 func (client *Client) apiDelete(uri string, queryParams map[string][]string, result interface{}) (status int, err error) {
-	return   client.apiCall(HTTPDelete, uri, queryParams, "", result)
+	return client.apiCall(HTTPDelete, uri, queryParams, "", result)
 
 }
 
-func (client *Client) apiPut(uri string, queryParams map[string][]string, putData interface{}, result interface{}) (status int,err error) {
+func (client *Client) apiPut(uri string, queryParams map[string][]string, putData interface{}, result interface{}) (status int, err error) {
 
 	var putDataString []byte
 	if putData != nil {
@@ -142,8 +142,10 @@ func (client *Client) apiPost(uri string, queryParams map[string][]string, postD
 }
 
 func (client *Client) apiCall(method string, uri string, queryParams map[string][]string, body string, result interface{}) (int, error) {
-	client.buildURL(uri, queryParams)
-	status, response, err := client.httpCall(method, body)
+	fmt.Printf("apiCall ... method: %v url: %v queryParams: %+v\n", method, uri, queryParams)
+
+	url,_ := client.buildURL(uri, queryParams)
+	status, response, err := client.httpCall(method, url, body)
 
 	if err != nil {
 		return 0, err
@@ -198,18 +200,23 @@ func (client *Client) apiCall(method string, uri string, queryParams map[string]
 	}
 	return status, nil
 }
-func (client *Client) buildURL(reqPath string, queryParams map[string][]string) {
-	query := client.url.Query()
-	master,_ := url.Parse(client.config.URL)
-	prefix :=master.Path
+func (client *Client) buildURL(reqPath string, queryParams map[string][]string) (*url.URL, error){
+	// make copy of client url
+	base := *client.url
+
+	query := base.Query()
+	fmt.Printf("client.url.params %+v ; queryParams: %+v; client.config.URL: %+v base.url: %+v\n",query , queryParams, client.config.URL, base)
+	master, _ := url.Parse(client.config.URL)
+	prefix := master.Path
 	for k, vl := range queryParams {
-		for _,val := range vl {
+		for _, val := range vl {
 			query.Add(k, val)
 		}
 	}
-	client.url.RawQuery = query.Encode()
+	base.RawQuery = query.Encode()
 
-	client.url.Path = path.Join(prefix, reqPath)
+	base.Path = path.Join(prefix, reqPath)
+	return &base,nil
 }
 
 func (client *Client) applyRequestHeaders(request *http.Request) {
@@ -223,8 +230,8 @@ func (client *Client) applyRequestHeaders(request *http.Request) {
 	}
 }
 
-func (client *Client) newRequest(method string, body string) (*http.Request, error) {
-	request, err := http.NewRequest(method, client.url.String(), strings.NewReader(body))
+func (client *Client) newRequest(method string, url *url.URL, body string) (*http.Request, error) {
+	request, err := http.NewRequest(method, url.String(), strings.NewReader(body))
 
 	if err != nil {
 		return nil, err
@@ -239,8 +246,8 @@ func (client *Client) newRequest(method string, body string) (*http.Request, err
 	return request, nil
 }
 
-func (client *Client) httpCall(method string, body string) (int, *http.Response, error) {
-	request, err := client.newRequest(method, body)
+func (client *Client) httpCall(method string, url *url.URL, body string) (int, *http.Response, error) {
+	request, err := client.newRequest(method, url, body)
 
 	if err != nil {
 		return 0, nil, err

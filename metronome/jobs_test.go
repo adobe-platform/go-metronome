@@ -312,13 +312,13 @@ var _ = Describe("Jobs", func() {
 
 			It("Makes the start request", func() {
 				st, err := client.StartJob(job_without_arguments)
-				Expect(err).ShouldNot(HaveOccurred())
 
+				Expect(err).ShouldNot(HaveOccurred())
 				_, found := st.(JobStatus)
 				Expect(found).To(Equal(true))
-
 				Expect(server.ReceivedRequests()).To(HaveLen(2))
 			})
+
 		})
 
 	})
