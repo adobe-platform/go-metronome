@@ -544,7 +544,7 @@ type JobStatus struct {
 	ID          string `json:"id"`
 	JobID       string `json:"jobId"`
 	Status      string `json:"status"`
-	Tasks       []interface{} `json:"tasks"`
+	Tasks       [] TaskStatus `json:"tasks"`
 }
 // Jobs - list of jobs
 type Jobs []Job
