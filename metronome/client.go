@@ -142,7 +142,7 @@ func (client *Client) apiPost(uri string, queryParams map[string][]string, postD
 }
 
 func (client *Client) apiCall(method string, uri string, queryParams map[string][]string, body string, result interface{}) (int, error) {
-	fmt.Printf("apiCall ... method: %v url: %v queryParams: %+v\n", method, uri, queryParams)
+	logrus.Debugf("apiCall ... method: %v url: %v queryParams: %+v", method, uri, queryParams)
 
 	url,_ := client.buildURL(uri, queryParams)
 	status, response, err := client.httpCall(method, url, body)
@@ -205,7 +205,7 @@ func (client *Client) buildURL(reqPath string, queryParams map[string][]string) 
 	base := *client.url
 
 	query := base.Query()
-	fmt.Printf("client.url.params %+v ; queryParams: %+v; client.config.URL: %+v base.url: %+v\n",query , queryParams, client.config.URL, base)
+	logrus.Debugf("client.url.params %+v ; queryParams: %+v; client.config.URL: %+v base.url: %+v",query , queryParams, client.config.URL, base)
 	master, _ := url.Parse(client.config.URL)
 	prefix := master.Path
 	for k, vl := range queryParams {
