@@ -2,7 +2,7 @@ package cli
 
 import (
 	met "github.com/adobe-platform/go-metronome/metronome"
-	"github.com/Sirupsen/logrus"
+	log "github.com/behance/go-logrus"
 	"fmt"
 	"errors"
 	"bytes"
@@ -55,7 +55,7 @@ func (theJob *JobTopLevel) Parse(args [] string) (exec CommandExec, err error) {
 	if len(args) == 0 {
 		panic(errors.New("job subcommand required"))
 	}
-	logrus.Debugf("JobTopLevel job args: %+v\n", args)
+	log.Debugf("JobTopLevel job args: %+v\n", args)
 	theJob.subcommand = args[0]
 	switch  theJob.subcommand{
 	case "create":
@@ -90,7 +90,7 @@ func (theJob *JobTopLevel) Parse(args [] string) (exec CommandExec, err error) {
 	if len(args) > 1 {
 		subcommandArgs = args[1:]
 	}
-	logrus.Debugf("job %s args: %+v\n", theJob.subcommand, subcommandArgs)
+	log.Debugf("job %s args: %+v\n", theJob.subcommand, subcommandArgs)
 
 	if exec, err = theJob.task.Parse(subcommandArgs); err != nil {
 		panic(err)
@@ -179,7 +179,7 @@ func (theJob *JobCreateConfig) makeJob() (*met.Job, error) {
 	} else if container != nil {
 		newJob.GetRun().SetDocker(container).SetCmd(theJob.cmd)
 	}
-	logrus.Debugf("JobCreateRuntime: %+v", theJob)
+	log.Debugf("JobCreateRuntime: %+v", theJob)
 	return newJob, nil
 
 }
@@ -201,7 +201,7 @@ func (theJob *JobCreateRuntime) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
 		theJob.labels = make(map[string]string)
 	}
 
-	logrus.Debugf("nvlist: %+v", theJob.env)
+	log.Debugf("nvlist: %+v", theJob.env)
 	flags.StringVar((*string)(&theJob.JobID), "job-id", "", "Job Id")
 	flags.StringVar(&theJob.description, "description", "", "Job Description - optional")
 	flags.StringVar((*string)(&theJob.dockerImage), "docker-image", "", "Docker Image")
@@ -252,7 +252,7 @@ type JobRunNow struct {
 }
 // Parse -
 func (theJob *JobCreateRuntime) Parse(args []string) (exec CommandExec, err error) {
-	logrus.Debugf("JobCreateRuntime.Parse %+v", args)
+	log.Debugf("JobCreateRuntime.Parse %+v", args)
 	flags := flag.NewFlagSet("job create", flag.ExitOnError)
 	theJob.FlagSet(flags)
 
@@ -282,7 +282,7 @@ func (theJob *JobCreateRuntime) Parse(args []string) (exec CommandExec, err erro
 }
 // Execute - create and execute a job
 func (theJob *JobRunNow) Execute(runtime *Runtime) (interface{}, error) {
-	logrus.Debugf("JobCreateRuntime.Execute %+v", runtime)
+	log.Debugf("JobCreateRuntime.Execute %+v", runtime)
 	_, err := runtime.client.CreateJob(theJob.job)
 	if err != nil {
 		return nil, err
@@ -293,7 +293,7 @@ func (theJob *JobRunNow) Execute(runtime *Runtime) (interface{}, error) {
 
 // Execute - create a job
 func (theJob *JobCreateRuntime) Execute(runtime *Runtime) (interface{}, error) {
-	logrus.Debugf("JobCreateRuntime.Execute %+v", runtime)
+	log.Debugf("JobCreateRuntime.Execute %+v", runtime)
 	return runtime.client.CreateJob(theJob.job)
 }
 

@@ -3,7 +3,7 @@ package cli
 import "flag"
 import (
 	met "github.com/adobe-platform/go-metronome/metronome"
-	"github.com/Sirupsen/logrus"
+	log "github.com/behance/go-logrus"
 	"fmt"
 	"errors"
 	"bytes"
@@ -56,7 +56,7 @@ func (theSchedule *SchedTopLevel) Parse(args [] string) (exec CommandExec, err e
 			err = errors.New(buf.String())
 		}
 	}()
-	logrus.Debugf("ScheduleTopLevel args: %+v", args)
+	log.Debugf("ScheduleTopLevel args: %+v", args)
 
 	if len(args) == 0 {
 		panic(errors.New("sub command required"))
@@ -89,12 +89,12 @@ func (theSchedule *SchedTopLevel) Parse(args [] string) (exec CommandExec, err e
 	if len(args) > 1 {
 		subcommandArgs = args[1:]
 	}
-	logrus.Debugf("schedule %s args: %+v  task: %+v", theSchedule.subcommand, subcommandArgs, theSchedule.task)
+	log.Debugf("schedule %s args: %+v  task: %+v", theSchedule.subcommand, subcommandArgs, theSchedule.task)
 	exec, err = theSchedule.task.Parse(subcommandArgs)
 	if err != nil {
 		panic(fmt.Errorf("SchedTopLevel parse failed %+v", err))
 	}
-	logrus.Debugf("SchedTopLevel parse succeeded %+v", exec)
+	log.Debugf("SchedTopLevel parse succeeded %+v", exec)
 	return exec, nil
 
 }
@@ -241,7 +241,7 @@ func (theSched *JobScheduleCreate) Usage(writer io.Writer) {
 }
 // Parse - parses flags per JobSched (job-id) but returns self as CommandExec with validation
 func (theSched *JobScheduleCreate) Parse(args [] string) (_ CommandExec, err error) {
-	logrus.Debugf("JobScheduleCreate.parse args: %+v", args)
+	log.Debugf("JobScheduleCreate.parse args: %+v", args)
 	flags := flag.NewFlagSet("schedule create", flag.ExitOnError)
 	(*JobSched)(theSched).FlagSet(flags)
 
@@ -255,7 +255,7 @@ func (theSched *JobScheduleCreate) Parse(args [] string) (_ CommandExec, err err
 		}
 	}()
 	if err = flags.Parse(args); err != nil {
-		logrus.Debugf("JobScheduleCreate.parse failed %+v", err)
+		log.Debugf("JobScheduleCreate.parse failed %+v", err)
 		panic(err)
 	} else if err = (*JobSched)(theSched).Validate(); err != nil {
 		panic(err)
@@ -281,7 +281,7 @@ func (theSched *JobSchedUpdate) Usage(writer io.Writer) {
 
 // Parse - JobSched flags but returns self as CommandExec when valid
 func (theSched *JobSchedUpdate) Parse(args []string) (_ CommandExec, err error) {
-	logrus.Debugf("JobSchedUpdate.Parse args: %s", args)
+	log.Debugf("JobSchedUpdate.Parse args: %s", args)
 	flags := flag.NewFlagSet("schedule update", flag.ExitOnError)
 	(*JobSched)(theSched).FlagSet(flags)
 	defer func() {

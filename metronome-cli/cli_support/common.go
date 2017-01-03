@@ -1,7 +1,7 @@
 package cli
 import (
 	"flag"
-	"github.com/Sirupsen/logrus"
+	log "github.com/behance/go-logrus"
 	"errors"
 )
 
@@ -20,7 +20,7 @@ func (id *JobID) FlagSet(flags *flag.FlagSet) *flag.FlagSet {
 }
 // Validate - validate state usually done as the last part of flag parsing
 func (id *JobID) Validate() error {
-	logrus.Debugf("JobId.Validate\n")
+	log.Debugf("JobId.Validate\n")
 	if string(*id) == "" {
 		return errors.New("job-id required")
 	}

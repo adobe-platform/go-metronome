@@ -3,7 +3,7 @@ package cli
 import (
 	"flag"
 	met "github.com/adobe-platform/go-metronome/metronome"
-	"github.com/Sirupsen/logrus"
+	log "github.com/behance/go-logrus"
 	"io"
 	"fmt"
 	"strings"
@@ -73,7 +73,7 @@ func (runtime *Runtime) Parse(args []string) (CommandExec, error) {
 	}
 	runtime.client = client
 
-	logrus.Debugf("Runtime <global flags> ok")
+	log.Debugf("Runtime <global flags> ok")
 	// No exec returned
 	return nil, nil
 }

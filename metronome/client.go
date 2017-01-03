@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 	"io/ioutil"
-	"github.com/Sirupsen/logrus"
+	log "github.com/behance/go-logrus"
 	"bytes"
 	"path"
 )
@@ -85,7 +85,7 @@ type Client struct {
 // NewClient returns a new  client, initialzed with the provided config
 func NewClient(config Config) (Metronome, error) {
 	client := new(Client)
-	logrus.Debugf("NewClient started %+v", config)
+	log.Debugf("NewClient started %+v", config)
 	var err error
 	client.url, err = url.Parse(config.URL)
 	if err != nil {
@@ -121,7 +121,7 @@ func (client *Client) apiPut(uri string, queryParams map[string][]string, putDat
 	var putDataString []byte
 	if putData != nil {
 		putDataString, err = json.Marshal(putData)
-		logrus.Debugf("PUT %s", string(putDataString))
+		log.Debugf("PUT %s", string(putDataString))
 	}
 	return client.apiCall(HTTPPut, uri, queryParams, string(putDataString), result)
 }
@@ -142,7 +142,7 @@ func (client *Client) apiPost(uri string, queryParams map[string][]string, postD
 }
 
 func (client *Client) apiCall(method string, uri string, queryParams map[string][]string, body string, result interface{}) (int, error) {
-	logrus.Debugf("apiCall ... method: %v url: %v queryParams: %+v", method, uri, queryParams)
+	log.Debugf("apiCall ... method: %v url: %v queryParams: %+v", method, uri, queryParams)
 
 	url,_ := client.buildURL(uri, queryParams)
 	status, response, err := client.httpCall(method, url, body)
@@ -150,11 +150,11 @@ func (client *Client) apiCall(method string, uri string, queryParams map[string]
 	if err != nil {
 		return 0, err
 	}
-	logrus.Debugf("%s result status: %+v", uri, response.Status)
-	logrus.Debugf("Headers: %+v", response.Header)
+	log.Debugf("%s result status: %+v", uri, response.Status)
+	log.Debugf("Headers: %+v", response.Header)
 	if response.ContentLength > 0 {
 		ct := response.Header["Content-Type"]
-		logrus.Debugf("content-type: %s", ct)
+		log.Debugf("content-type: %s", ct)
 		switch ct[0] {
 		case "application/json":
 			var msg json.RawMessage
@@ -175,7 +175,7 @@ func (client *Client) apiCall(method string, uri string, queryParams map[string]
 						fmt.Fprintf(bb, string(msg))
 						return status, errors.New(string(bb.Bytes()))
 					}
-					logrus.Debugf("method %s uri: %s status: %d result type: %T", method, uri, status, result)
+					log.Debugf("method %s uri: %s status: %d result type: %T", method, uri, status, result)
 				}
 			} else {
 				return status, err
@@ -205,7 +205,7 @@ func (client *Client) buildURL(reqPath string, queryParams map[string][]string) 
 	base := *client.url
 
 	query := base.Query()
-	logrus.Debugf("client.url.params %+v ; queryParams: %+v; client.config.URL: %+v base.url: %+v",query , queryParams, client.config.URL, base)
+	log.Debugf("client.url.params %+v ; queryParams: %+v; client.config.URL: %+v base.url: %+v",query , queryParams, client.config.URL, base)
 	master, _ := url.Parse(client.config.URL)
 	prefix := master.Path
 	for k, vl := range queryParams {
@@ -240,7 +240,7 @@ func (client *Client) newRequest(method string, url *url.URL, body string) (*htt
 	client.applyRequestHeaders(request)
 	if client.config.Debug {
 		if dump, err := httputil.DumpRequest(request, true); err != nil {
-			logrus.Infof(string(dump))
+			log.Infof(string(dump))
 		}
 	}
 	return request, nil
@@ -264,5 +264,5 @@ func (client *Client) httpCall(method string, url *url.URL, body string) (int, *
 
 // TODO: this better
 func (client *Client) log(message string, args ...interface{}) {
-	logrus.Infof(message + "\n", args...)
+	log.Infof(message + "\n", args...)
 }

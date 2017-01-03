@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"regexp"
 	"strconv"
-	"github.com/Sirupsen/logrus"
+	log "github.com/behance/go-logrus"
 	"net/http"
 )
 // CreateJob - create a metronome job.  returns the job or an error
@@ -163,7 +163,7 @@ func (client *Client) StopJob(jobID string, runID string) (interface{}, error) {
 // POST /v1/jobs/$jobId/schedules
 func (client *Client) CreateSchedule(jobID string, sched *Schedule) (interface{}, error) {
 	var msg Schedule //json.RawMessage
-	logrus.Debugf("client.JobScheduleCreate %s\n", jobID)
+	log.Debugf("client.JobScheduleCreate %s\n", jobID)
 	if _, err := client.apiPost(fmt.Sprintf(MetronomeAPIJobScheduleCreate, jobID), nil, sched, &msg); err != nil {
 		return nil, err
 	}

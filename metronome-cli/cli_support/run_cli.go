@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"bytes"
 	"errors"
-	"github.com/Sirupsen/logrus"
+	log "github.com/behance/go-logrus"
 	"os"
 )
 
@@ -48,7 +48,7 @@ func (theRun *RunsTopLevel) Parse(args [] string) (exec CommandExec, err error) 
 	if len(args) == 0 {
 		panic(errors.New("sub command required"))
 	}
-	logrus.Debugf("RunTopLevel args: %+v", args)
+	log.Debugf("RunTopLevel args: %+v", args)
 	theRun.subcommand = args[0]
 	switch theRun.subcommand {
 	case "ls":
@@ -69,7 +69,7 @@ func (theRun *RunsTopLevel) Parse(args [] string) (exec CommandExec, err error) 
 	if len(args) > 1 {
 		subcommandArgs = args[1:]
 	}
-	logrus.Debugf("run %s args: %+v", theRun.subcommand, subcommandArgs)
+	log.Debugf("run %s args: %+v", theRun.subcommand, subcommandArgs)
 	if exec, err = theRun.task.Parse(subcommandArgs); err != nil {
 		panic(err)
 	} else {

@@ -2,7 +2,7 @@ package cli
 
 import (
 	met "github.com/adobe-platform/go-metronome/metronome"
-	"github.com/Sirupsen/logrus"
+	log "github.com/behance/go-logrus"
 	"fmt"
 	"strings"
 	"errors"
@@ -30,7 +30,7 @@ func (i *RunArgs) String() string {
 
 // Set - Value interface
 func (i *RunArgs) Set(value string) error {
-	logrus.Debugf("Args.Set %s", value)
+	log.Debugf("Args.Set %s", value)
 	*i = append(*i, value)
 	return nil
 }
@@ -47,12 +47,12 @@ func (list *NvList) String() string {
 
 // Set - Value interface implementation
 func (list *NvList) Set(value string) error {
-	logrus.Debugf("NvList %+v %s", list, value)
+	log.Debugf("NvList %+v %s", list, value)
 	nv := strings.Split(value, "=")
 	if len(nv) != 2 {
 		return errors.New("Environment vars should be NAME=VALUE")
 	}
-	logrus.Debugf("NvList %+v", nv)
+	log.Debugf("NvList %+v", nv)
 	vv := (*list)
 	vv[strings.TrimSpace(nv[0])] = strings.TrimSpace(nv[1])
 	return nil
@@ -117,9 +117,9 @@ func (list *ArtifactList) Set(value string) (err error) {
 	var arty met.Artifact
 
 	for _, pairs := range strings.Split(strings.TrimSpace(value), " ") {
-		logrus.Debugf("pairs : %+v", pairs)
+		log.Debugf("pairs : %+v", pairs)
 		kv := strings.SplitN(strings.TrimSpace(pairs), "=", 2)
-		logrus.Debugf("kv=%+v", kv)
+		log.Debugf("kv=%+v", kv)
 		switch strings.TrimSpace(kv[0]){
 		case "url", "uri":
 			ur, err := url.Parse(strings.TrimSpace(kv[1]));
