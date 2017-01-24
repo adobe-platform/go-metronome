@@ -25,7 +25,7 @@ type JobTopLevel struct {
 // Usage - show usage
 func (theJob *JobTopLevel) Usage(writer io.Writer) {
 	fmt.Fprintf(writer, "job {create|delete|update|ls|get|schedules|schedule|help}\n")
-	fmt.Fprintf(writer, `
+	fmt.Fprintln(writer, `
 	  create  <options>   | creates a Job
 	  delete  <options>   | deletes a Job
 	  update  <options>   | update a Job
