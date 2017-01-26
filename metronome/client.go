@@ -10,9 +10,8 @@ import (
 	"strings"
 	"time"
 	"io/ioutil"
-	"github.com/Sirupsen/logrus"
+	log "github.com/behance/go-logrus"
 	"bytes"
-
 	"path"
 )
 
@@ -40,7 +39,10 @@ type Metronome interface {
 	//
 	// schedules
 	// GET /v1/jobs/$jobId/runs
-	Runs(jobID string) (*[]JobStatus, error)
+	// Technically, this rev of Runs() is a hack to get functionality from the undocumented api
+	//   - since is milliseconds from epoch
+
+	Runs(jobID string, statusSince int64) (*Job, error)
 	// POST /v1/jobs/$jobId/runs
 	StartJob(jobID string) (interface{}, error)
 	// GET /v1/jobs/$jobId/runs/$runId
@@ -68,7 +70,10 @@ type Metronome interface {
 	Ping() (*string, error)
 }
 
-
+// TwentyFourHoursAgo - return time 24 hours ago
+func TwentyFourHoursAgo() int64 {
+	return time.Now().UnixNano() / int64(time.Millisecond) - 24 * 3600000
+}
 
 // A Client can make http requests
 type Client struct {
@@ -80,7 +85,7 @@ type Client struct {
 // NewClient returns a new  client, initialzed with the provided config
 func NewClient(config Config) (Metronome, error) {
 	client := new(Client)
-	logrus.Debugf("NewClient started %+v", config)
+	log.Debugf("NewClient started %+v", config)
 	var err error
 	client.url, err = url.Parse(config.URL)
 	if err != nil {
@@ -102,32 +107,32 @@ func NewClient(config Config) (Metronome, error) {
 	return client, nil
 }
 
-func (client *Client) apiGet(uri string, queryParams map[string]string, result interface{}) (status int, err error) {
+func (client *Client) apiGet(uri string, queryParams map[string][]string, result interface{}) (status int, err error) {
 	return client.apiCall(HTTPGet, uri, queryParams, "", result)
 }
 
-func (client *Client) apiDelete(uri string, queryParams map[string]string, result interface{}) (status int, err error) {
+func (client *Client) apiDelete(uri string, queryParams map[string][]string, result interface{}) (status int, err error) {
 	return client.apiCall(HTTPDelete, uri, queryParams, "", result)
 
 }
 
-func (client *Client) apiPut(uri string, queryParams map[string]string, putData interface{}, result interface{}) (status int, err error) {
+func (client *Client) apiPut(uri string, queryParams map[string][]string, putData interface{}, result interface{}) (status int, err error) {
+
 	var putDataString []byte
 	if putData != nil {
 		putDataString, err = json.Marshal(putData)
-		logrus.Debugf("PUT %s", string(putDataString))
+		log.Debugf("PUT %s", string(putDataString))
 	}
 	return client.apiCall(HTTPPut, uri, queryParams, string(putDataString), result)
 }
 
-func (client *Client) apiPost(uri string, queryParams map[string]string, postData interface{}, result interface{}) (status int, err error) {
+func (client *Client) apiPost(uri string, queryParams map[string][]string, postData interface{}, result interface{}) (status int, err error) {
 	//postDataString, err := json.Marshal(postData)
 	postDataString := new(bytes.Buffer)
 	enc := json.NewEncoder(postDataString)
 	enc.SetEscapeHTML(false)
 	err = enc.Encode(postData)
 
-	//fmt.Printf("post data:%s\n",postDataString.String())
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
@@ -136,18 +141,20 @@ func (client *Client) apiPost(uri string, queryParams map[string]string, postDat
 
 }
 
-func (client *Client) apiCall(method string, uri string, queryParams map[string]string, body string, result interface{}) (int, error) {
-	client.buildURL(uri, queryParams)
-	status, response, err := client.httpCall(method, body)
+func (client *Client) apiCall(method string, uri string, queryParams map[string][]string, body string, result interface{}) (int, error) {
+	log.Debugf("apiCall ... method: %v url: %v queryParams: %+v", method, uri, queryParams)
+
+	url,_ := client.buildURL(uri, queryParams)
+	status, response, err := client.httpCall(method, url, body)
 
 	if err != nil {
 		return 0, err
 	}
-	logrus.Debugf("%s result status: %+v", uri, response.Status)
-	logrus.Debugf("Headers: %+v", response.Header)
+	log.Debugf("%s result status: %+v", uri, response.Status)
+	log.Debugf("Headers: %+v", response.Header)
 	if response.ContentLength > 0 {
 		ct := response.Header["Content-Type"]
-		logrus.Debugf("content-type: %s", ct)
+		log.Debugf("content-type: %s", ct)
 		switch ct[0] {
 		case "application/json":
 			var msg json.RawMessage
@@ -168,7 +175,7 @@ func (client *Client) apiCall(method string, uri string, queryParams map[string]
 						fmt.Fprintf(bb, string(msg))
 						return status, errors.New(string(bb.Bytes()))
 					}
-					logrus.Debugf("method %s uri: %s status: %d result type: %T", method, uri, status, result)
+					log.Debugf("method %s uri: %s status: %d result type: %T", method, uri, status, result)
 				}
 			} else {
 				return status, err
@@ -185,7 +192,6 @@ func (client *Client) apiCall(method string, uri string, queryParams map[string]
 		default:
 			return status, fmt.Errorf("Unknown content-type %s", ct[0])
 		}
-
 	}
 
 	// TODO: Handle error status codes
@@ -194,16 +200,23 @@ func (client *Client) apiCall(method string, uri string, queryParams map[string]
 	}
 	return status, nil
 }
-func (client *Client) buildURL(reqPath string, queryParams map[string]string) {
-	query := client.url.Query()
+func (client *Client) buildURL(reqPath string, queryParams map[string][]string) (*url.URL, error){
+	// make copy of client url
+	base := *client.url
+
+	query := base.Query()
+	log.Debugf("client.url.params %+v ; queryParams: %+v; client.config.URL: %+v base.url: %+v",query , queryParams, client.config.URL, base)
 	master, _ := url.Parse(client.config.URL)
 	prefix := master.Path
-	for k, v := range queryParams {
-		query.Add(k, v)
+	for k, vl := range queryParams {
+		for _, val := range vl {
+			query.Add(k, val)
+		}
 	}
-	client.url.RawQuery = query.Encode()
+	base.RawQuery = query.Encode()
 
-	client.url.Path = path.Join(prefix, reqPath)
+	base.Path = path.Join(prefix, reqPath)
+	return &base,nil
 }
 
 func (client *Client) applyRequestHeaders(request *http.Request) {
@@ -217,8 +230,8 @@ func (client *Client) applyRequestHeaders(request *http.Request) {
 	}
 }
 
-func (client *Client) newRequest(method string, body string) (*http.Request, error) {
-	request, err := http.NewRequest(method, client.url.String(), strings.NewReader(body))
+func (client *Client) newRequest(method string, url *url.URL, body string) (*http.Request, error) {
+	request, err := http.NewRequest(method, url.String(), strings.NewReader(body))
 
 	if err != nil {
 		return nil, err
@@ -227,14 +240,14 @@ func (client *Client) newRequest(method string, body string) (*http.Request, err
 	client.applyRequestHeaders(request)
 	if client.config.Debug {
 		if dump, err := httputil.DumpRequest(request, true); err != nil {
-			logrus.Infof(string(dump))
+			log.Infof(string(dump))
 		}
 	}
 	return request, nil
 }
 
-func (client *Client) httpCall(method string, body string) (int, *http.Response, error) {
-	request, err := client.newRequest(method, body)
+func (client *Client) httpCall(method string, url *url.URL, body string) (int, *http.Response, error) {
+	request, err := client.newRequest(method, url, body)
 
 	if err != nil {
 		return 0, nil, err
@@ -251,5 +264,5 @@ func (client *Client) httpCall(method string, body string) (int, *http.Response,
 
 // TODO: this better
 func (client *Client) log(message string, args ...interface{}) {
-	logrus.Infof(message + "\n", args...)
+	log.Infof(message + "\n", args...)
 }

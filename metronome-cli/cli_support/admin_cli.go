@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"github.com/Sirupsen/logrus"
+	log "github.com/behance/go-logrus"
 	"fmt"
 	"io"
 
@@ -34,7 +34,7 @@ func (ping *Ping) Usage(writer io.Writer) {
 
 // Parse - implement interface notably returning the self as the Executor interface
 func (ping *Ping) Parse(args []string) (CommandExec, error) {
-	logrus.Debugf("Ping.Parse: %+v", args)
+	log.Debugf("Ping.Parse: %+v", args)
 	return ping, nil
 }
 // Execute - run the Metronome Ping command against he metronome service

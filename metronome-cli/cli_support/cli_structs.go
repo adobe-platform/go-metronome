@@ -2,7 +2,7 @@ package cli
 
 import (
 	met "github.com/adobe-platform/go-metronome/metronome"
-	"github.com/Sirupsen/logrus"
+	log "github.com/behance/go-logrus"
 	"fmt"
 	"strings"
 	"errors"
@@ -18,7 +18,6 @@ import (
 // flag.Var calls flag.Value interface of the provided interface{}
 // The following light-weight types implement Value while preserving the Set/String symantics of the `real` type it alias.
 
-
 // RunArgs - thin type providing Flags Value implementation for Metronome Run->Args
 // type override to support parsing.  []string alias for met.Run.Args
 // It implements flag.Value via Set/String
@@ -31,42 +30,12 @@ func (i *RunArgs) String() string {
 
 // Set - Value interface
 func (i *RunArgs) Set(value string) error {
-	logrus.Debugf("Args.Set %s", value)
+	log.Debugf("Args.Set %s", value)
 	*i = append(*i, value)
 	return nil
 }
-
-// LabelList - thin type providing Flags Value interface implementaion for Metronome labels ( they become environment variables)
-//   type override to support parsing.  LabelList alias' met.Labels
-//   It implements flag.Value via Set/String
-type LabelList  met.Labels
-
-// String - Value interface implementation used with Flags
-func (labels *LabelList) String() string {
-	return fmt.Sprintf("%s", *labels)
-}
-// Set - Value interface implementation used with Flags
-func (labels *LabelList) Set(value string) error {
-	logrus.Debugf("LabelList %s", value)
-	v := strings.Split(value, ";")
-	logrus.Debugf("LabelList %+v", v)
-	//lb := LabelList{}
-	for _, ii := range v {
-		nv := strings.Split(ii, "=")
-		switch strings.ToLower(nv[0]) {
-		case "location":
-			labels.Location = nv[1]
-		case "owner":
-			labels.Owner = nv[1]
-		default:
-			return errors.New("Unknown value" + nv[0])
-		}
-	}
-	if labels.Location == ""  && labels.Owner == "" {
-		return errors.New("Missing both location and owner")
-	}
-	return nil
-}
+// type override to support parsing.  env alias' map[string]string
+// It implements flag.Value via Set/String
 
 // NvList - thin type providing Flags Value interface implementation for items needing map[string]string
 type NvList map[string]string
@@ -78,14 +47,14 @@ func (list *NvList) String() string {
 
 // Set - Value interface implementation
 func (list *NvList) Set(value string) error {
-	logrus.Debugf("NvList %+v %s", list, value)
+	log.Debugf("NvList %+v %s", list, value)
 	nv := strings.Split(value, "=")
 	if len(nv) != 2 {
 		return errors.New("Environment vars should be NAME=VALUE")
 	}
-	logrus.Debugf("NvList %+v", nv)
+	log.Debugf("NvList %+v", nv)
 	vv := (*list)
-	vv[nv[0]] = nv[1]
+	vv[strings.TrimSpace(nv[0])] = strings.TrimSpace(nv[1])
 	return nil
 }
 
@@ -148,9 +117,9 @@ func (list *ArtifactList) Set(value string) (err error) {
 	var arty met.Artifact
 
 	for _, pairs := range strings.Split(strings.TrimSpace(value), " ") {
-		logrus.Debugf("pairs : %+v", pairs)
+		log.Debugf("pairs : %+v", pairs)
 		kv := strings.SplitN(strings.TrimSpace(pairs), "=", 2)
-		logrus.Debugf("kv=%+v", kv)
+		log.Debugf("kv=%+v", kv)
 		switch strings.TrimSpace(kv[0]){
 		case "url", "uri":
 			ur, err := url.Parse(strings.TrimSpace(kv[1]));

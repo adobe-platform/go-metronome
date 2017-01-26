@@ -295,20 +295,20 @@ func NewRestart(activeDeadlineSeconds int, policy string) (*Restart, error) {
 }
 // Run - composite structure representing Metronone run
 type Run struct {
-	Artifacts []Artifact  `json:"artifacts,omitempty"`
-	Cmd string      `json:"cmd,omitempty"`
+	Artifacts      []Artifact  `json:"artifacts,omitempty"`
+	Cmd            string      `json:"cmd,omitempty"`
 
-	Args []string          `json:"args,omitempty"`
-	Cpus float64           `json:"cpus"`
-	Mem int               `json:"mem"`
-	Disk int               `json:"disk"`
-	Docker *Docker           `json:"docker,omitempty"`
-	Env map[string]string `json:"env,omitempty"`
+	Args           []string          `json:"args,omitempty"`
+	Cpus           float64           `json:"cpus"`
+	Mem            int               `json:"mem"`
+	Disk           int               `json:"disk"`
+	Docker         *Docker           `json:"docker,omitempty"`
+	Env            map[string]string `json:"env,omitempty"`
 	MaxLaunchDelay int               `json:"maxLaunchDelay"`
-	Placement *Placement        `json:"placement,omitempty"`
-	Restart *Restart          `json:"restart,omitempty"`
-	User string            `json:"user,omitempty"`
-	Volumes []Volume         `json:"volumes"`
+	Placement      *Placement        `json:"placement,omitempty"`
+	Restart        *Restart          `json:"restart,omitempty"`
+	User           string            `json:"user,omitempty"`
+	Volumes        []Volume         `json:"volumes"`
 }
 
 // GetArtifacts - accessor returning Artifacts
@@ -425,7 +425,7 @@ func (runner *Run) SetUser(user string) *Run {
 }
 
 // GetVolumes - get job's Volume mappings
-func (runner *Run) GetVolumes() *[]Volume{
+func (runner *Run) GetVolumes() *[]Volume {
 	return &runner.Volumes
 }
 // SetVolumes - set the job's Volume mappings
@@ -459,30 +459,33 @@ func NewRun(cpus float64, mem int, disk int) (*Run, error) {
 	}
 	return &vg, nil
 }
-// Labels - the job labels; becomes environment variables
-type Labels struct {
-	Location string `json:"location"`
-	Owner    string `json:"owner"`
-}
-// Job - toplevel metronome structure for creating and managing a job
-type Job struct {
-	Description string `json:"description"`
-	ID string `json:"id"`
-	Labels *Labels`json:"labels,omitempty"`
-	Run *Run `json:"run"`
-}
+// Labels - list of labels that get converted to environment variables on job
+type Labels map[string]string
 
-// NewJob - create a job checking for some required fields
-func NewJob(id string, description string, labels *Labels, run *Run) (*Job, error) {
+//Job - toplevel metronome structure for creating and managing a job
+type Job struct {
+	Description    string `json:"description"`
+	ID             string `json:"id"`
+	Labels         *Labels`json:"labels,omitempty"`
+	Run            *Run `json:"run"`
+	Schedules      []*Schedule `json:"schedules,omitempty"`
+	ActiveRuns     [] *ActiveRun`json:"activeRuns,omitempty"`
+	History        *History `json:"history,omitempty"`
+	HistorySummary *HistorySummary `json:"historySummary,omitempty"`
+}
+//NewJob - create a job checking for some required fields
+func NewJob(id string, description string, labels Labels, run *Run) (*Job, error) {
+
 	if len(id) == 0 {
 		return nil, required("Job.Id")
 	}
 	if run == nil {
 		return nil, required("Job.run")
 	}
+
 	return &Job{ID: id,
 		Description: description,
-		Labels: labels,
+		Labels: &labels,
 		Run: run,
 	}, nil
 }
@@ -532,6 +535,7 @@ type Schedule struct {
 	Enabled                 bool `json:"enabled"`
 	StartingDeadlineSeconds int `json:"startingDeadlineSeconds"`
 	Timezone                string `json:"timezone"`
+	NextRunAt               string `json:"nextRunAt,omitempty"`
 }
 // JobStatus - represents a metronome job status
 type JobStatus struct {
@@ -540,7 +544,45 @@ type JobStatus struct {
 	ID          string `json:"id"`
 	JobID       string `json:"jobId"`
 	Status      string `json:"status"`
-	Tasks       []interface{} `json:"tasks"`
+	Tasks       [] TaskStatus `json:"tasks"`
 }
 // Jobs - list of jobs
 type Jobs []Job
+
+// TaskStatus - status of currently running task representing job
+type TaskStatus struct {
+	ID        string `json:"id"`
+	StartedAt string `json:"startedAt"`
+	Status    string `json:"status"`
+}
+// HistoryStatus - history outcome of previous jobs
+type HistoryStatus struct {
+	ID         string `json:"id"`
+	CreatedAt  string `json:"createdAt"`
+	FinishedAt string `json:"finishedAt"`
+}
+// ActiveRun - undocumented structure returned via api for job runs
+type ActiveRun struct {
+	ID          string `json:"id"`
+	JobID       string `json:"jobId"`
+	Status      string `json:"status"`
+	CreatedAt   string `json:"createdAt"`
+	CompletedAt interface{} `json:"completedAt"`
+	Tasks       []TaskStatus `json:"tasks"`
+}
+// History - undocumented structure returned by Metronome api for job runs
+type History struct {
+	SuccessCount           int `json:"successCount"`
+	FailureCount           int `json:"failureCount"`
+	LastSuccessAt          string `json:"lastSuccessAt"`
+	LastFailureAt          string `json:"lastFailureAt"`
+	SuccessfulFinishedRuns [] HistoryStatus `json:"successfulFinishedRuns"`
+	FailedFinishedRuns     [] HistoryStatus `json:"failedFinishedRuns"`
+}
+// HistorySummary - undocumented structure returned by Metronome api for job runs
+type HistorySummary struct {
+	SuccessCount  int `json:"successCount"`
+	FailureCount  int `json:"failureCount"`
+	LastSuccessAt string `json:"lastSuccessAt"`
+	LastFailureAt string `json:"lastFailureAt"`
+}

@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/Sirupsen/logrus"
+	log "github.com/behance/go-logrus"
 	"os"
 	"strings"
 	//"errors"
@@ -27,7 +27,7 @@ func init() {
 
 func usage(msg string) {
 	if msg != "" {
-		logrus.Errorf(" %s ", msg)
+		log.Errorf(" %s ", msg)
 	}
 	options := []string{
 		"job",
@@ -58,7 +58,7 @@ GLOBAL OPTIONS:
 	os.Exit(2)
 }
 func main() {
-	logrus.SetOutput(os.Stderr)
+	log.SetOutput(os.Stderr)
 
 	if len(os.Args) == 1 {
 		usage("")
@@ -82,9 +82,9 @@ func main() {
 		if index > 1 {
 			commonArgs = os.Args[1:index]
 		} else {
-			logrus.Debugf("No command args used\n")
+			log.Debugf("No command args used\n")
 		}
-		logrus.Debugf("commonArgs %+v action: %s\n", commonArgs, action)
+		log.Debugf("commonArgs %+v action: %s\n", commonArgs, action)
 		if _, err := runtime.Parse(commonArgs); err != nil {
 			usage(err.Error())
 		} else if action == "" {
@@ -93,39 +93,39 @@ func main() {
 			usage(fmt.Sprintf("'%s' command not defined", action))
 		}
 		if runtime.Debug {
-			logrus.SetLevel(logrus.DebugLevel)
+			log.SetLevel(log.DebugLevel)
 		}
 		var executorArgs []string
 		if len(os.Args) > (index + 1) {
 			executorArgs = os.Args[index + 1:]
 		}
-		logrus.Debugf("executorArgs %+v", executorArgs)
+		log.Debugf("executorArgs %+v", executorArgs)
 		if action == "help" {
 			usage("your help:")
 		} else if executor, err := commands[action].Parse(executorArgs); err != nil {
-			logrus.Fatalf("%s failed because %+v", action, err)
+			log.Fatalf("%s failed because %+v", action, err)
 		} else {
 			if result, err2 := executor.Execute(runtime); err2 != nil {
-				logrus.Fatalf("action %s execution failed because %+v", action, err2)
+				log.Fatalf("action %s execution failed because %+v", action, err2)
 			} else {
-				logrus.Debugf("Result type: %T", result)
+				log.Debugf("Result type: %T", result)
 
 				switch result.(type){
 				case json.RawMessage:
 					var f interface{}
 					by := result.(json.RawMessage)
 					if err := json.Unmarshal(by, &f); err != nil {
-						logrus.Infof(string(by))
+						log.Infof(string(by))
 					} else {
-						if b2, err2 := json.Marshal(f); err2 != nil {
-							logrus.Infof(string(by))
+						if b2, err2 := json.MarshalIndent(f,"","  "); err2 != nil {
+							log.Infof(string(by))
 						} else {
-							logrus.Infof(string(b2))
+							log.Infof(string(b2))
 						}
 					}
 				default:
-					if bb, err7 := json.Marshal(result); err7 == nil {
-						logrus.Infof("result %s\n", (string(bb)))
+					if bb, err7 := json.MarshalIndent(result,"", "  "); err7 == nil {
+						log.Infof("result %s\n", (string(bb)))
 					}
 				}
 			}
