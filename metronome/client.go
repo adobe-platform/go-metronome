@@ -1,28 +1,28 @@
 package metronome
 
 import (
+	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
+	log "github.com/behance/go-logrus"
+	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"path"
 	"strings"
 	"time"
-	"io/ioutil"
-	log "github.com/behance/go-logrus"
-	"bytes"
-	"path"
 )
 
 // Constants to represent HTTP verbs
 const (
-	HTTPGet = "GET"
-	HTTPPut = "PUT"
+	HTTPGet    = "GET"
+	HTTPPut    = "PUT"
 	HTTPDelete = "DELETE"
-	HTTPPost = "POST"
+	HTTPPost   = "POST"
 )
-
 
 // Metronome represents the client interface for interacting with the metronome API
 type Metronome interface {
@@ -72,7 +72,7 @@ type Metronome interface {
 
 // TwentyFourHoursAgo - return time 24 hours ago
 func TwentyFourHoursAgo() int64 {
-	return time.Now().UnixNano() / int64(time.Millisecond) - 24 * 3600000
+	return time.Now().UnixNano()/int64(time.Millisecond) - 24*3600000
 }
 
 // A Client can make http requests
@@ -92,10 +92,15 @@ func NewClient(config Config) (Metronome, error) {
 		return nil, err
 	}
 	client.config = config
-	var PTransport http.RoundTripper = &http.Transport{Proxy: http.ProxyFromEnvironment}
+	var PTransport http.RoundTripper = &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: config.AllowUnverifiedTls,
+		},
+	}
 
 	client.http = &http.Client{
-		Timeout: (time.Duration(config.RequestTimeout) * time.Second),
+		Timeout:   (time.Duration(config.RequestTimeout) * time.Second),
 		Transport: PTransport,
 	}
 	// Verify you can reach metronome
@@ -144,7 +149,7 @@ func (client *Client) apiPost(uri string, queryParams map[string][]string, postD
 func (client *Client) apiCall(method string, uri string, queryParams map[string][]string, body string, result interface{}) (int, error) {
 	log.Debugf("apiCall ... method: %v url: %v queryParams: %+v", method, uri, queryParams)
 
-	url,_ := client.buildURL(uri, queryParams)
+	url, _ := client.buildURL(uri, queryParams)
 	status, response, err := client.httpCall(method, url, body)
 
 	if err != nil {
@@ -161,7 +166,7 @@ func (client *Client) apiCall(method string, uri string, queryParams map[string]
 			err = json.NewDecoder(response.Body).Decode(&msg)
 			// decode as a raw json message which will fail if the message isn't good json
 			if err == nil {
-				switch result.(type){
+				switch result.(type) {
 				case json.RawMessage:
 					tt := result.(*json.RawMessage)
 					*tt = msg
@@ -182,7 +187,7 @@ func (client *Client) apiCall(method string, uri string, queryParams map[string]
 			}
 
 		case "text/plain; charset=utf-8":
-			htmlData, err := ioutil.ReadAll(response.Body);
+			htmlData, err := ioutil.ReadAll(response.Body)
 			if err != nil {
 				return status, err
 			}
@@ -200,12 +205,12 @@ func (client *Client) apiCall(method string, uri string, queryParams map[string]
 	}
 	return status, nil
 }
-func (client *Client) buildURL(reqPath string, queryParams map[string][]string) (*url.URL, error){
+func (client *Client) buildURL(reqPath string, queryParams map[string][]string) (*url.URL, error) {
 	// make copy of client url
 	base := *client.url
 
 	query := base.Query()
-	log.Debugf("client.url.params %+v ; queryParams: %+v; client.config.URL: %+v base.url: %+v",query , queryParams, client.config.URL, base)
+	log.Debugf("client.url.params %+v ; queryParams: %+v; client.config.URL: %+v base.url: %+v", query, queryParams, client.config.URL, base)
 	master, _ := url.Parse(client.config.URL)
 	prefix := master.Path
 	for k, vl := range queryParams {
@@ -216,13 +221,13 @@ func (client *Client) buildURL(reqPath string, queryParams map[string][]string) 
 	base.RawQuery = query.Encode()
 
 	base.Path = path.Join(prefix, reqPath)
-	return &base,nil
+	return &base, nil
 }
 
 func (client *Client) applyRequestHeaders(request *http.Request) {
 	request.Header.Add("Content-Type", "application/json")
 	request.Header.Add("Accept", "application/json")
-	if client.config.User != "" &&  client.config.Pw != "" {
+	if client.config.User != "" && client.config.Pw != "" {
 		request.SetBasicAuth(client.config.User, client.config.Pw)
 	}
 	if client.config.AuthToken != "" {
@@ -264,5 +269,5 @@ func (client *Client) httpCall(method string, url *url.URL, body string) (int, *
 
 // TODO: this better
 func (client *Client) log(message string, args ...interface{}) {
-	log.Infof(message + "\n", args...)
+	log.Infof(message+"\n", args...)
 }
