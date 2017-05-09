@@ -1,5 +1,7 @@
 `go-metronome` is [semantically versioned](http://semver.org/spec/v2.0.0.html)
 
+### v0.8
+- Add AllowUnverifiedTls to config struct to allow use with self-signed certs
 
 ### v0.7
 - Included undocumented `embed=` uri parameters found in the metronome source that give better picture of status
