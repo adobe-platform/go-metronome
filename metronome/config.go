@@ -8,11 +8,12 @@ type Config struct {
 	Debug bool
 	/* the timeout for requests */
 	RequestTimeout int
+	/* allow unverified tls (self-signed certs) defaults to false */
+	AllowUnverifiedTls bool
 
 	AuthToken string
-	User string
-	Pw string
-
+	User      string
+	Pw        string
 }
 
 // NewDefaultConfig returns a default configuration.

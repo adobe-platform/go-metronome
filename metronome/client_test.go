@@ -45,6 +45,16 @@ var _ = Describe("Client", func() {
 			Expect(err).To(BeNil())
 		})
 
+		It("Defaults to unverifiedtls being false", func() {
+			test_config := Config{
+				URL:            server.URL(),
+				Debug:          false,
+				RequestTimeout: 5,
+			}
+
+			Expect(test_config.AllowUnverifiedTls).To(BeFalse())
+		})
+
 		It("Errors if it cannot hit metronome", func() {
 			server.AppendHandlers(
 				ghttp.CombineHandlers(
