@@ -9,7 +9,7 @@ type Config struct {
 	/* the timeout for requests */
 	RequestTimeout int
 	/* allow unverified tls (self-signed certs) defaults to false */
-	AllowUnverifiedTls bool
+	AllowUnverifiedTLS bool
 
 	AuthToken string
 	User      string

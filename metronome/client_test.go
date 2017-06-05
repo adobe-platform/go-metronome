@@ -52,7 +52,7 @@ var _ = Describe("Client", func() {
 				RequestTimeout: 5,
 			}
 
-			Expect(test_config.AllowUnverifiedTls).To(BeFalse())
+			Expect(test_config.AllowUnverifiedTLS).To(BeFalse())
 		})
 
 		It("Errors if it cannot hit metronome", func() {
