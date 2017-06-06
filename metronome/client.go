@@ -95,7 +95,7 @@ func NewClient(config Config) (Metronome, error) {
 	var PTransport http.RoundTripper = &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: config.AllowUnverifiedTls,
+			InsecureSkipVerify: config.AllowUnverifiedTLS,
 		},
 	}
 
